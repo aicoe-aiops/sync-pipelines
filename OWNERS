@@ -1,9 +1,9 @@
 # See the OWNERS docs at https://go.k8s.io/owners
 
 approvers:
-  - goern
-  - fridex
+  - tumido
+  - durandom
 reviewers:
-  - pacospace
-  - harshad16 
-  - kpostoffice
+  - 4n4nd
+  - HumairAK
+  - anishasthana

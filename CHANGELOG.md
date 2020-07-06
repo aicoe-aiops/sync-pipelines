@@ -1,7 +1,8 @@
-# Changelog for Thoth's Template GitHub Project
+# Changelog for Sync Pipelines GitHub Project
 
-## [0.1.0] - 2019-Sep-11 - goern
+## [2.0.0] - 2020-Jul-06 - tumido
 
 ### Added
 
-all the things that you see...
+- Rebased on top of [Thoth Station - Template Project](https://github.com/thoth-station/template-project).
+- Squashed `dh-argo-workflows` codebase.
