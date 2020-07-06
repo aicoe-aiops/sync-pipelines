@@ -1,0 +1,23 @@
+Argo workflow has failed!
+
+Name:         {{ name }}
+Namespace:    {{ namespace }}
+Status:       {{ status }}
+Created:      {{ timestamp }}
+
+Failures:
+{%- if not failures %}
+Unable to parse failed tasks.
+{%- endif %}
+
+{%- for f in failures %}
+- Name:       {{ f.displayName }}
+  Message:    {{ f.message }}
+  Template:   {{ f.templateName }}
+  Pod:        {{ f.podName }}
+  Phase:      {{ f.phase }}
+  Finished:   {{ f.finishedAt }}
+{% endfor %}
+
+--
+View it on Argo UI: http://{{ argo_ui_host }}/workflows/{{ namespace }}/{{ name }}

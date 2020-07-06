@@ -1,0 +1,41 @@
+<html>
+    <head>
+        <style>
+            table { border: 0 }
+            td { padding: 0 10 }
+        </style>
+    </head>
+    <body>
+        <p><b>Argo workflow has failed!</b></p>
+        <p><b>Workflow:</b></p>
+        <table>
+            <tr><td>Name</td><td>{{ name }}</td></tr>
+            <tr><td>Namespace</td><td>{{ namespace }}</td></tr>
+            <tr><td>Status</td><td>{{ status }}</td></tr>
+            <tr><td>Created</td><td>{{ timestamp }}</td></tr>
+        </table>
+        <p><b>Failures:</b></p>
+        {%- if not failures %}
+        <p>Unable to parse failed tasks.</p>
+        {%- else %}
+        <ul>
+        {%- for f in failures %}
+            <li>
+                <table>
+                    <tr><td>Name</td><td>{{ f.displayName }}</td></tr>
+                    <tr><td>Message</td><td>{{ f.message }}</td></tr>
+                    <tr><td>Template</td><td>{{ f.templateName }}</td></tr>
+                    <tr><td>Pod</td><td>{{ f.podName }}</td></tr>
+                    <tr><td>Phase</td><td>{{ f.phase }}</td></tr>
+                    <tr><td>Finished</td><td>{{ f.finishedAt }}</td></tr>
+                </table>
+            </li>
+        {%- endfor %}
+        </ul>
+        {%- endif %}
+        <p>
+            &mdash;<br />
+            <a href="http://{{ argo_ui_host }}/workflows/{{ namespace }}/{{ name }}">View it on Argo UI</a>
+        </p>
+    </body>
+</html>
