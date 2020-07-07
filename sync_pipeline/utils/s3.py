@@ -1,7 +1,9 @@
+"""S3FileSystem wrapper."""
+
 import os
 from contextlib import contextmanager
 from itertools import tee
-from typing import Callable, Dict, Iterable, Optional, Tuple
+from typing import Callable, Dict, Iterable, Optional
 
 import s3fs  # type: ignore
 from botocore.exceptions import ClientError  # type: ignore
@@ -11,6 +13,8 @@ from .logging import logger
 
 
 class S3FileSystem:
+    """S3FileSystem wrapper."""
+
     def __init__(self, key: str, secret: str, url: str, path: str) -> None:
         """Access S3 as if it were a file system.
 
@@ -28,9 +32,7 @@ class S3FileSystem:
         self.key = key
         self.url = url
 
-        self.s3fs = s3fs.S3FileSystem(
-            key=key, secret=secret, client_kwargs=dict(endpoint_url=url)
-        )
+        self.s3fs = s3fs.S3FileSystem(key=key, secret=secret, client_kwargs=dict(endpoint_url=url))
 
     @classmethod
     def from_env(cls, prefix: str = "") -> "S3FileSystem":
@@ -82,9 +84,9 @@ class S3FileSystem:
         # Fix Ceph reporting folders as "type"="file", check for size instead
         if not withdirs:
             _constraint = constraint
-            constraint = lambda meta: meta.get(
-                "type", ""
-            ).lower() != "directory" and _constraint(meta)
+
+            def constraint(meta):
+                return meta.get("type", "").lower() != "directory" and _constraint(meta)
 
         return {
             k.replace(f"{self.__base_path}/", ""): v
@@ -118,10 +120,7 @@ class S3FileSystem:
         Returns:
             Dict[str, str]: Object metadata
         """
-        return {
-            k.lower(): v
-            for k, v in self.s3fs.info(f"{self.__base_path}/{path}").items()
-        }
+        return {k.lower(): v for k, v in self.s3fs.info(f"{self.__base_path}/{path}").items()}
 
     def rm(self, path: str) -> None:
         """Unlink a file.
@@ -160,19 +159,20 @@ class S3FileSystem:
                 return False
         return True
 
-    def copy(self, source: str, dest: str):
+    def copy(self, source: str, dest: str, dest_base_path: str = None) -> None:
         """Copy files within a bucket.
 
         Args:
             source (str): Source path
             dest (str): Destination path
+            dest_base_path (str, optional): Bucket name and base path to the destinatation within
+                the same client
         """
-        return self.s3fs.copy(
-            f"{self.__base_path}/{source}", f"{self.__base_path}/{dest}"
-        )
+        dest_base_path = dest_base_path or self.__base_path
 
-    def __eq__(self, other: S3FileSystem):
-        return all(
-            getattr(self, attr) == getattr(other, attr)
-            for attr in ("key", "secret", "url", "__base_path")
-        )
+        return self.s3fs.copy(f"{self.__base_path}/{source}", f"{dest_base_path}/{dest}")
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, S3FileSystem):
+            return NotImplemented
+        return all(getattr(self, attr) == getattr(other, attr) for attr in ("key", "secret", "url"))
