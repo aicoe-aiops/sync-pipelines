@@ -38,7 +38,7 @@ def lookup() -> List[Dict[str, Any]]:
     """
     try:
         oldest_date = datetime.now(timezone.utc) - get_timedelta()
-        s3 = S3FileSystem.from_env("S3")
+        s3 = S3FileSystem.from_config_file()[0]
     except EnvironmentError:
         logger.error("Environment not set properly, exiting", exc_info=True)
         exit(1)

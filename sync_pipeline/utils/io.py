@@ -3,9 +3,11 @@
 import json
 import os
 import re
+
 from datetime import datetime
+from configparser import ConfigParser, SectionProxy
 from string import Formatter
-from typing import Any, Dict
+from typing import Any, Dict, Union, Iterator, Tuple
 
 
 class CustomEncoder(json.JSONEncoder):
@@ -38,10 +40,35 @@ def serialize(obj: Any, filename: str) -> None:
         json.dump(obj, f, cls=CustomEncoder)
 
 
+def _convert_config_value(section: SectionProxy, key: str) -> Union[str, bool]:
+    """Parse ConfigParser's boolean values."""
+    try:
+        return section.getboolean(key)
+    except ValueError:
+        return section.get(key)
+
+
+def read_config(filename: str) -> Iterator[Tuple[str, dict]]:
+    """Read INI file and parse values.
+
+    Args:
+        filename (str): Config file location.
+
+    Yields:
+        Iterator[Tuple[str, dict]]: Section name and content dict pair.
+
+    """
+    config = ConfigParser()
+    config.read(filename)
+
+    for s in config.sections():
+        yield s, {k: _convert_config_value(config[s], k) for k in config[s].keys()}
+
+
 class KeyFormatter:
     """S3 key transformation parser and formatter."""
 
-    def __init__(self, source_formatter: str, destination_formatter: str):
+    def __init__(self, source_formatter: str = "", destination_formatter: str = "", **kwargs):
         """S3 key formatter for repartitioning.
 
         Transforms original keys into a new ones, allowing for variable substitution and rearrangement.
@@ -52,7 +79,14 @@ class KeyFormatter:
             destination_formatter (str): Pythonic f-string used to format the key into its final form.
 
         """
-        self.source_parser = re.compile(r"^" + re.sub(r"{(.*?)}", r"(?P<\g<1>>.*?)", source_formatter) + "$")
+        if not source_formatter or not destination_formatter:
+            self.source_parser = None
+            return
+
+        extension = r"\..{2,3}" if kwargs.get("unpack") else ""
+        self.source_parser = re.compile(
+            r"^" + re.sub(r"{(.*?)}", r"(?P<\g<1>>.*?)", source_formatter) + extension + "$"
+        )
 
         param_names = lambda formatter: set(str(p[1]) for p in Formatter().parse(formatter) if p[1])  # noqa: E731
 
@@ -116,6 +150,9 @@ class KeyFormatter:
             str: Formatted new key.
 
         """
+        if not self.source_parser:
+            return key
+
         match = self.source_parser.match(key)
         if not match:
             raise AttributeError("Key doesn't match the expected source format")
