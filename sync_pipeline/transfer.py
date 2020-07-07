@@ -6,7 +6,7 @@ from typing import Iterable
 from itertools import tee
 from dataclasses import dataclass
 
-from .utils import S3FileSystem, logger
+from .utils import S3FileSystem, logger, KeyFormatter
 
 
 @dataclass
@@ -41,13 +41,13 @@ def copy(client_key_pairs: Iterable[ClientKeyPair]) -> None:
                 shutil.copyfileobj(i, o)
 
 
-def transfer(relpath: str, etag: str, size: int) -> bool:
+def transfer(source_path: str, etag: str, size: int) -> bool:
     """Transfer recent data between S3s.
 
     Arguments:
-        relpath(str): Relative path in object S3 key
-        etag(str): E-Tag hash of the object
-        size(str): Size of the object in bytes
+        source_path (str): Relative path in object S3 key
+        etag (str): E-Tag hash of the object
+        size (str): Size of the object in bytes
 
     Returns:
         bool: True if success
@@ -56,14 +56,16 @@ def transfer(relpath: str, etag: str, size: int) -> bool:
     try:
         input_s3 = S3FileSystem.from_env("INPUT")
         output_s3 = S3FileSystem.from_env("OUTPUT")
+        formatter = KeyFormatter.from_env("INPUT", "OUTPUT")
 
     except EnvironmentError:
         logger.error("Environment not set properly, exiting", exc_info=True)
         return False
 
-    logger.info("Transfering file", dict(relpath=relpath))
     try:
-        copy((ClientKeyPair(input_s3, relpath), ClientKeyPair(output_s3, relpath)))
+        destination_path = formatter.format(source_path)
+        logger.info("Transfering file", dict(source_path=source_path, destination_path=destination_path))
+        copy((ClientKeyPair(input_s3, source_path), ClientKeyPair(output_s3, destination_path)))
     except:  # noqa: E722
         logger.error("Failed to transfer a file", exc_info=True)
         return False
@@ -72,7 +74,7 @@ def transfer(relpath: str, etag: str, size: int) -> bool:
         logger.info("Object was unpacked from source, skipping verification")
         return True
 
-    files = (dict(etag=etag, size=size), output_s3.info(relpath))
+    files = (dict(etag=etag, size=size), output_s3.info(destination_path))
     logger.info("Verify file", dict(files=files))
     if not S3FileSystem.cmp(files):
         logger.warning("Verification failed", dict(files=files))
