@@ -1,7 +1,4 @@
-"""Transfer files with repartitioning.
-
-Deprecated.
-"""
+"""Transfer files."""
 
 import shutil
 from sys import argv
@@ -59,6 +56,7 @@ def transfer(relpath: str, etag: str, size: int) -> bool:
     try:
         input_s3 = S3FileSystem.from_env("INPUT")
         output_s3 = S3FileSystem.from_env("OUTPUT")
+
     except EnvironmentError:
         logger.error("Environment not set properly, exiting", exc_info=True)
         return False
@@ -69,6 +67,10 @@ def transfer(relpath: str, etag: str, size: int) -> bool:
     except:  # noqa: E722
         logger.error("Failed to transfer a file", exc_info=True)
         return False
+
+    if input_s3.unpack:
+        logger.info("Object was unpacked from source, skipping verification")
+        return True
 
     files = (dict(etag=etag, size=size), output_s3.info(relpath))
     logger.info("Verify file", dict(files=files))

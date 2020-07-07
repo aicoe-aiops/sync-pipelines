@@ -2,6 +2,7 @@
 
 import os
 from contextlib import contextmanager
+from gzip import GzipFile
 from itertools import tee
 from typing import Callable, Dict, Iterable, Optional
 
@@ -15,7 +16,7 @@ from .logging import logger
 class S3FileSystem:
     """S3FileSystem wrapper."""
 
-    def __init__(self, key: str, secret: str, url: str, path: str) -> None:
+    def __init__(self, key: str, secret: str, url: str, path: str, unpack: bool) -> None:
         """Access S3 as if it were a file system.
 
         This exposes a filesystem-like API (ls, cp, open, etc.) on top of S3 storage.
@@ -25,6 +26,7 @@ class S3FileSystem:
             secret (str): Access secret key
             url (str): Base S3 URL
             path (str): Base S3 path for lookups
+            unpack (bool): Instruct client to unpack file on open
 
         """
         logger.info("Initializing a remote file system", dict(url=url, path=path))
@@ -32,6 +34,7 @@ class S3FileSystem:
         self.secret = secret
         self.key = key
         self.url = url
+        self.unpack = unpack
 
         self.s3fs = s3fs.S3FileSystem(key=key, secret=secret, client_kwargs=dict(endpoint_url=url))
 
@@ -42,10 +45,11 @@ class S3FileSystem:
         Create s3fs using credentials and paths from environment variables.
 
         Args:
-            prefix (str, optional): prefix of environment variable names. Defaults to ""
+            prefix (str, optional): Prefix of environment variable names. Defaults to "".
+            unpack (bool, optional): Instruct client to unpack file on open. Defaults to False.
 
         Returns:
-            Tuple[S3FileSystem, str]: S3 file system and a base path that should be respected
+            Tuple[S3FileSystem, str]: S3 file system and a base path that should be respected.
 
         """
         try:
@@ -53,10 +57,11 @@ class S3FileSystem:
             path = os.environ[f"{prefix}_PATH"].rstrip("/")
             key = os.environ[f"{prefix}_ACCESS_KEY_ID"]
             secret = os.environ[f"{prefix}_SECRET_ACCESS_KEY"]
+            unpack = bool(os.getenv(f"{prefix}_UNPACK_FILES", False))
         except KeyError:
             raise EnvironmentError
 
-        return cls(key, secret, url, path)
+        return cls(key, secret, url, path, unpack)
 
     def find(
         self,
@@ -110,7 +115,12 @@ class S3FileSystem:
         """
         try:
             with self.s3fs.open(f"{self.__base_path}/{path}", mode, **kwargs) as f:
-                yield f
+                if not self.unpack:
+                    yield f
+                else:
+                    with GzipFile(fileobj=f) as f_unpacked:
+                        yield f_unpacked
+
         except ClientError as e:
             raise translate_boto_error(e)
 
