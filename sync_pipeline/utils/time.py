@@ -1,15 +1,17 @@
+"""Datetime helpers."""
+
 import os
 import re
 from datetime import timedelta
 
-from .logging import logger
-
+# fmt: off
 REGEX = re.compile(
-    "((?P<days>\d+?)d)?"
-    "((?P<hours>\d+?)h)?"
-    "((?P<minutes>\d+?)m)?"
-    "((?P<seconds>\d+?)s)?"
+    r"((?P<days>\d+?)d)?"
+    r"((?P<hours>\d+?)h)?"
+    r"((?P<minutes>\d+?)m)?"
+    r"((?P<seconds>\d+?)s)?"
 )
+# fmt: on
 
 
 def get_timedelta() -> timedelta:
@@ -17,6 +19,7 @@ def get_timedelta() -> timedelta:
 
     Returns:
         timedelta: Time delta representing given string.
+
     """
     try:
         raw_timedelta = os.environ["TIMEDELTA"]

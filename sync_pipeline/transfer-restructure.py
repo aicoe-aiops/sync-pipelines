@@ -1,20 +1,24 @@
+"""Transfer files with repartitioning.
+
+Deprecated.
+"""
+
 import gzip
 import hashlib
 import re
 import shutil
-from datetime import datetime, timezone
 from os import SEEK_END
 from sys import argv
 from typing import IO, Any, Dict, Match
 
-from utils import S3FileSystem, logger
+from .utils import S3FileSystem, logger
 
 REGEX = re.compile(
-    "(?P<date>.*?)/"
-    "(?P<filename>"  # Match all the groups bellow together
-    "(?P<collection>.*)\."
-    "(?P<original_ext>.*)\."
-    "(?P<ext>.*))"
+    r"(?P<date>.*?)/"
+    r"(?P<filename>"  # Match all the groups bellow together
+    r"(?P<collection>.*)\."
+    r"(?P<original_ext>.*)\."
+    r"(?P<ext>.*))"
 )
 
 
@@ -27,11 +31,9 @@ def new_key(folder: str, obj: Match[str]) -> str:
 
     Returns:
         str: New key to file object.
+
     """
-    return (
-        f"{obj['collection']}/{folder}/"
-        f"{obj['date']}-{obj['collection']}.{obj['original_ext']}"
-    )
+    return f"{obj['collection']}/{folder}/" f"{obj['date']}-{obj['collection']}.{obj['original_ext']}"
 
 
 def calculate_metadata(fileobject: IO[bytes]) -> Dict[str, Any]:
@@ -42,6 +44,7 @@ def calculate_metadata(fileobject: IO[bytes]) -> Dict[str, Any]:
 
     Returns:
         Dict[str, Any]: Metadata object containing size and MD5 hash in ETag format.
+
     """
     file_hash = hashlib.md5()
     for chunk in iter(lambda: fileobject.read(file_hash.block_size * 256), b""):
@@ -56,12 +59,13 @@ def restructure(relpath: str, etag: str, size: int) -> bool:
     """Sync object to a different S3 bucket with repartitioning.
 
     Arguments:
-        relpath(str): Relative path in object S3 key 
+        relpath(str): Relative path in object S3 key
         etag(str): E-Tag hash of the object
         size(str): Size of the object in bytes
 
     Returns:
-        bool: True if success 
+        bool: True if success
+
     """
     try:
         input_s3 = S3FileSystem.from_env("INPUT")
@@ -87,8 +91,7 @@ def restructure(relpath: str, etag: str, size: int) -> bool:
     current_latest = output_s3.find(f"{parsed_key['collection']}/latest").keys()
     if not current_latest:
         logger.warning(
-            "No files in latest folder for collection",
-            dict(collection=parsed_key["collection"]),
+            "No files in latest folder for collection", dict(collection=parsed_key["collection"]),
         )
 
     try:
@@ -129,7 +132,7 @@ def restructure(relpath: str, etag: str, size: int) -> bool:
 if __name__ == "__main__":
     try:
         status = restructure(argv[1], argv[2], int(argv[3]))
-    except:
+    except:  # noqa: F401
         logger.error("Unexpected error during transfer", exc_info=True)
         exit(1)
 

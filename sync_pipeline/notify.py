@@ -1,12 +1,12 @@
+"""Email alerting and notifications from Argo."""
+
 import os
 import smtplib
-from datetime import date
 from email.message import EmailMessage
-from inspect import cleandoc
 from json import loads
 from jinja2 import Template
 
-from utils import logger
+from .utils import logger
 
 SMTP_SERVER = os.getenv("ALERT_EMAIL_SMTP_SERVER", "")
 FROM_EMAIL = os.getenv("ALERT_FROM_EMAIL")

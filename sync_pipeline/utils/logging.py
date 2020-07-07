@@ -1,3 +1,5 @@
+"""Common logging setup for logstash."""
+
 import logging
 import sys
 from logstash_formatter import LogstashFormatterV1  # type: ignore
@@ -8,6 +10,7 @@ def create_logger() -> logging.Logger:
 
     Returns:
         logging.Logger: Python logger for __name__
+
     """
     logger = logging.getLogger(__name__)
     handler = logging.StreamHandler(stream=sys.stdout)

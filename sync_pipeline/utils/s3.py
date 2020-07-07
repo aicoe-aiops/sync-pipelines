@@ -25,6 +25,7 @@ class S3FileSystem:
             secret (str): Access secret key
             url (str): Base S3 URL
             path (str): Base S3 path for lookups
+
         """
         logger.info("Initializing a remote file system", dict(url=url, path=path))
         self.__base_path = path
@@ -45,6 +46,7 @@ class S3FileSystem:
 
         Returns:
             Tuple[S3FileSystem, str]: S3 file system and a base path that should be respected
+
         """
         try:
             url = os.environ[f"{prefix}_URL"]
@@ -78,6 +80,7 @@ class S3FileSystem:
 
         Returns:
             Dict[str, Dict[str, str]]: S3 file key and metadata as a dict
+
         """
         path = f"{self.__base_path}/{path}" if path else self.__base_path
 
@@ -85,8 +88,7 @@ class S3FileSystem:
         if not withdirs:
             _constraint = constraint
 
-            def constraint(meta):
-                return meta.get("type", "").lower() != "directory" and _constraint(meta)
+            constraint = lambda meta: meta.get("type", "").lower() != "directory" and _constraint(meta)  # noqa: E731
 
         return {
             k.replace(f"{self.__base_path}/", ""): v
@@ -104,6 +106,7 @@ class S3FileSystem:
 
         Returns:
             File object
+
         """
         try:
             with self.s3fs.open(f"{self.__base_path}/{path}", mode, **kwargs) as f:
@@ -119,6 +122,7 @@ class S3FileSystem:
 
         Returns:
             Dict[str, str]: Object metadata
+
         """
         return {k.lower(): v for k, v in self.s3fs.info(f"{self.__base_path}/{path}").items()}
 
@@ -127,6 +131,7 @@ class S3FileSystem:
 
         Args:
             path (str): Path to file within __base_path.
+
         """
         return self.s3fs.rm(f"{self.__base_path}/{path}")
 
@@ -137,11 +142,11 @@ class S3FileSystem:
         Match ETag on files.
 
         Args:
-            a_metadata (dict): Object to compare metadata.
-            b_metadata (dict): Object to compare metadata.
+            objects (Iterable[dict]: Objects to compare metadata.
 
         Returns:
             bool: True if files match
+
         """
         a_objects, b_objects = tee(objects)
         next(b_objects, None)
@@ -167,12 +172,14 @@ class S3FileSystem:
             dest (str): Destination path
             dest_base_path (str, optional): Bucket name and base path to the destinatation within
                 the same client
+
         """
         dest_base_path = dest_base_path or self.__base_path
 
         return self.s3fs.copy(f"{self.__base_path}/{source}", f"{dest_base_path}/{dest}")
 
     def __eq__(self, other: object) -> bool:
+        """Compate S3FileSystem to other objects."""
         if not isinstance(other, S3FileSystem):
             return NotImplemented
         return all(getattr(self, attr) == getattr(other, attr) for attr in ("key", "secret", "url"))

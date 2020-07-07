@@ -1,13 +1,14 @@
+"""IO helpers."""
+
 import json
-import os
-from datetime import datetime, date, time
 from typing import Any
 
 
 class CustomEncoder(json.JSONEncoder):
-    """JSON encoder that handles dates and iteratiors."""
+    """JSON encoder that handles dates and iterations."""
 
     def default(self, o):
+        """Parser for other than native types."""
         try:
             return list(iter(o))
         except TypeError:
@@ -27,6 +28,7 @@ def serialize(obj: Any, filename: str) -> None:
     Args:
         obj (Any): Python object to serialize.
         filename (str): Local filename, where the JSON will be stored.
+
     """
     with open(filename, "w") as f:
         json.dump(obj, f, cls=CustomEncoder)
