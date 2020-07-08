@@ -1,7 +1,6 @@
 """IO helpers."""
 
 import json
-import os
 import re
 
 from datetime import datetime
@@ -61,6 +60,9 @@ def read_config(filename: str) -> Iterator[Tuple[str, dict]]:
     config = ConfigParser()
     config.read(filename)
 
+    if not config.sections():
+        raise IOError(f"Invalid config file {filename}")
+
     for s in config.sections():
         yield s, {k: _convert_config_value(config[s], k) for k in config[s].keys()}
 
@@ -68,7 +70,7 @@ def read_config(filename: str) -> Iterator[Tuple[str, dict]]:
 class KeyFormatter:
     """S3 key transformation parser and formatter."""
 
-    def __init__(self, source_formatter: str = "", destination_formatter: str = "", **kwargs):
+    def __init__(self, source_formatter: str = None, destination_formatter: str = None, **kwargs):
         """S3 key formatter for repartitioning.
 
         Transforms original keys into a new ones, allowing for variable substitution and rearrangement.
@@ -83,6 +85,7 @@ class KeyFormatter:
             self.source_parser = None
             return
 
+        source_formatter = source_formatter.replace(".", r"\.")
         extension = r"\..{2,3}" if kwargs.get("unpack") else ""
         self.source_parser = re.compile(
             r"^" + re.sub(r"{(.*?)}", r"(?P<\g<1>>.*?)", source_formatter) + extension + "$"
@@ -94,28 +97,6 @@ class KeyFormatter:
         self.destination_formatter = destination_formatter
         self.destination_params = param_names(destination_formatter)
         self.kwargs = self._generated_kwargs()
-
-    @classmethod
-    def from_env(cls, source_prefix: str, destination_prefix: str) -> "KeyFormatter":
-        """Initialize KeyFormatter from env variables.
-
-        Args:
-            source_prefix (str): Prefixes the environment variable for the source formatter.
-            destination_prefix (str): Prefixes the environment variable for the destination formatter.
-
-        Raises:
-            EnvironmentError:  In case the expected keys are missing from environment, this error is raised.
-
-        Returns:
-            KeyFormatter: Properly initialized KeyFormatter instance.
-
-        """
-        try:
-            source_formatter = os.environ[f"{source_prefix}_FORMATTER"]
-            destination_formatter = os.environ[f"{destination_prefix}_FORMATTER"]
-        except KeyError:
-            raise EnvironmentError
-        return cls(source_formatter, destination_formatter)
 
     def _generated_kwargs(self) -> Dict[str, Any]:
         """Compute new default values for format variables.

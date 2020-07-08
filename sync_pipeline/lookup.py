@@ -1,11 +1,10 @@
 """Lookup files to transfer."""
 
-from datetime import datetime, timezone
-from sys import argv
-from typing import List, Dict, Any
+import re
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List
 
-from .utils import S3FileSystem, get_timedelta, logger, serialize
-
+from .utils import S3FileSystem, logger
 
 KEYS = ("lastmodified", "etag", "key", "type", "size")
 
@@ -25,20 +24,52 @@ def subset_metadata(meta: Dict[str, Any]) -> Dict[str, Any]:
     return {k.lower(): v for k, v in meta.items() if k.lower() in KEYS}
 
 
-def lookup() -> List[Dict[str, Any]]:
+# fmt: off
+REGEX = re.compile(
+    r"((?P<days>\d+?)d)?"
+    r"((?P<hours>\d+?)h)?"
+    r"((?P<minutes>\d+?)m)?"
+    r"((?P<seconds>\d+?)s)?"
+)
+# fmt: on
+
+
+def parse_timedelta(timestr: str) -> timedelta:
+    """Parse string interval from environment to timedelta.
+
+    Args:
+        timestr (str): String to parse as a timedelta.
+
+    Returns:
+        timedelta: Time delta representing given string.
+
+    """
+    parts = REGEX.match(timestr)
+    if not parts:
+        raise EnvironmentError("Timedelta format is not valid")
+
+    time_params = {k: int(v) for k, v in parts.groupdict().items() if v}
+    return timedelta(**time_params)
+
+
+def lookup(timestr: str, config_file: str = None) -> List[Dict[str, Any]]:
     """Lookup recently modifined files.
 
     List files on S3 and filter those that were modified in recent history.
 
+    Args:
+        timestr (str): Timedelta represented as a string.
+        config_file (str, optional): Path to configuration file.
+
     Returns:
-        List[dict]: List of recently modified files. Each intem in this list
+        List[dict]: List of recently modified files. Each item in this list
             contains the file metadata, absolute key and relative path within
             the base path.
 
     """
     try:
-        oldest_date = datetime.now(timezone.utc) - get_timedelta()
-        s3 = S3FileSystem.from_config_file()[0]
+        oldest_date = datetime.now(timezone.utc) - parse_timedelta(timestr)
+        s3 = S3FileSystem.from_config_file(config_file)[0]
     except EnvironmentError:
         logger.error("Environment not set properly, exiting", exc_info=True)
         exit(1)
@@ -52,16 +83,3 @@ def lookup() -> List[Dict[str, Any]]:
 
     # Select a metadata subset, so we don't clutter the workflow
     return [dict(relpath=k, **subset_metadata(v)) for k, v in located_files.items()]
-
-
-if __name__ == "__main__":
-    logger.info("Lookup started")
-
-    try:
-        located_files = lookup()
-        serialize(located_files, argv[1])
-    except:  # noqa: F401
-        logger.error("Unexpected error", exc_info=True)
-        exit(1)
-
-    logger.info("Done")

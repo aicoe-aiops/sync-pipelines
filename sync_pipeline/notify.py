@@ -38,7 +38,7 @@ def render_from_template(template_filename, failures) -> str:
     )
 
 
-def main() -> None:
+def notify() -> None:
     """Send an email notification."""
     if not all((SMTP_SERVER, FROM_EMAIL, TO_EMAIL_LIST)):
         logger.error("Alert email service not set up properly")
@@ -66,7 +66,3 @@ def main() -> None:
         smtp.send_message(msg)
 
     logger.info("Done")
-
-
-if __name__ == "__main__":
-    main()

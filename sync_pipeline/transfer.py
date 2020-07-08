@@ -1,14 +1,13 @@
 """Transfer files."""
 
 import shutil
-from sys import argv
 from typing import Iterable, List, Iterator
 from itertools import tee
 
 from .utils import S3FileSystem, S3File, logger, KeyFormatter
 
 
-def copy(clients: Iterable[S3File]) -> None:
+def copy(files: List[S3File]) -> None:
     """Clever copy of S3 objects.
 
     If both buckets are accessible via the same client, use S3 copy command.
@@ -19,17 +18,26 @@ def copy(clients: Iterable[S3File]) -> None:
             where to copy to.
 
     """
-    file_a, file_b = tee(clients)
+    file_a, file_b = tee(files)
     next(file_b, None)
 
     for a, b in zip(file_a, file_b):
+        log_args = dict(source=dict(client=a.client, key=a.key), destination=dict(client=b.client, key=b.key))
         if a.client == b.client:
-            logger.info("Copying within the same clients")
+            logger.info("Copying within the same clients", log_args)
             a.client.copy(a.key, b.key)
-        else:
-            logger.info("Copying to a different client")
-            with a.client.open(a.key, "rb", **b.client.flags) as i, b.client.open(b.key, "wb") as o:
+            continue
+
+        logger.info("Copying to a different client", log_args)
+        if a.client.flags == b.client.flags:
+            logger.info("Matching flags, files can be copied one to one.", log_args)
+            with a.client.open(a.key, "rb") as i, b.client.open(b.key, "wb") as o:
                 shutil.copyfileobj(i, o)
+            continue
+
+        logger.info("Flags don't match, copying from source", log_args)
+        with files[0].client.open(files[0].key, "rb", **b.client.flags) as i, b.client.open(b.key, "wb") as o:
+            shutil.copyfileobj(i, o)
 
 
 def calc_s3_files(source_path: str, clients: List[S3FileSystem]) -> Iterator[S3File]:
@@ -52,6 +60,7 @@ def calc_s3_files(source_path: str, clients: List[S3FileSystem]) -> Iterator[S3F
         for c in clients[1:]:
             if not c.formatter:
                 yield S3File(c, source_path)
+                continue
 
             destination_path = KeyFormatter(clients[0].formatter, c.formatter, **c.flags).format(source_path)
             yield S3File(c, destination_path)
@@ -73,20 +82,19 @@ def verify(files: Iterable[S3File]) -> bool:
     return all(a == b for a, b in zip(file_a, file_b))
 
 
-def transfer(source_path: str, etag: str, size: int) -> bool:
+def transfer(source_path: str, config_file: str = None) -> bool:
     """Transfer recent data between S3s.
 
     Arguments:
-        source_path (str): Relative path in object S3 key
-        etag (str): E-Tag hash of the object
-        size (str): Size of the object in bytes
+        source_path (str): Relative path in object S3 key.
+        config_file (str, optional): Path to configuration file.
 
     Returns:
         bool: True if success
 
     """
     try:
-        clients = S3FileSystem.from_config_file()
+        clients = S3FileSystem.from_config_file(config_file)
     except EnvironmentError:
         logger.error("Environment not set properly, exiting", exc_info=True)
         return False
@@ -113,16 +121,3 @@ def transfer(source_path: str, etag: str, size: int) -> bool:
 
     # logger.info("Verified", dict(files=files))
     return True
-
-
-if __name__ == "__main__":
-    try:
-        success = transfer(argv[1], argv[2], int(argv[3]))
-    except:  # noqa: E722
-        logger.error("Unexpected error during transfer", exc_info=True)
-        exit(1)
-
-    if not success:
-        logger.error("Failed to perform a full sync", dict(relpath=argv[1]))
-        exit(1)
-    logger.info("Successfully synced all files", dict(relpath=argv[1]))

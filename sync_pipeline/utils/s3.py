@@ -1,6 +1,5 @@
 """S3FileSystem wrapper."""
 
-import os
 from contextlib import contextmanager
 from dataclasses import dataclass
 from gzip import GzipFile
@@ -16,7 +15,7 @@ from .io import read_config
 
 
 DEFAULT_ENDPOINTS = dict(source="https://s3.amazonaws.com/", destination="https://s3.upshift.redhat.com/")
-CONFIG_FILE = os.getenv("CONFIG_FILE", "/etc/s3_settings.ini")
+CONFIG_FILE = "/etc/s3_settings.ini"
 
 
 class S3FileSystem:
@@ -51,12 +50,12 @@ class S3FileSystem:
 
         logger.info(
             "Initializing a remote file system",
-            dict(endpoint_url=endpoint_url, base_path=base_path, is_source=self.is_source),
+            dict(name=name, endpoint_url=self.endpoint_url, base_path=base_path, is_source=self.is_source),
         )
         self.__base_path = base_path
         self.aws_secret_access_key = aws_secret_access_key
         self.aws_access_key_id = aws_access_key_id
-        self.formatter = str(kwargs.pop("formatter", False))
+        self.formatter = str(kwargs.pop("formatter", ""))
         self.flags = kwargs
 
         self.s3fs = s3fs.S3FileSystem(
@@ -66,7 +65,7 @@ class S3FileSystem:
         )
 
     @classmethod
-    def from_config_file(cls) -> List["S3FileSystem"]:
+    def from_config_file(cls, filename: str = None) -> List["S3FileSystem"]:
         """Instantiate S3fs objects from config file.
 
         Create s3fs using credentials and paths from config files.
@@ -75,7 +74,8 @@ class S3FileSystem:
             Iterable["S3FileSystem"]: S3 file system clients.
 
         """
-        config = read_config(CONFIG_FILE)
+        filename = filename or CONFIG_FILE
+        config = read_config(filename)
         clients = [cls(k, **v) for k, v in config]
 
         with_source_attribute = [*filter(lambda c: c.is_source, clients)]
