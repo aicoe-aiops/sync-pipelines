@@ -2,11 +2,12 @@
 
 import json
 import re
-
-from datetime import datetime
 from configparser import ConfigParser, SectionProxy
+from datetime import datetime
+from dataclasses import dataclass
+from functools import lru_cache
 from string import Formatter
-from typing import Any, Dict, Union, Iterator, Tuple
+from typing import Any, Iterator, Tuple, Union
 
 
 class CustomEncoder(json.JSONEncoder):
@@ -67,77 +68,87 @@ def read_config(filename: str) -> Iterator[Tuple[str, dict]]:
         yield s, {k: _convert_config_value(config[s], k) for k in config[s].keys()}
 
 
-class KeyFormatter:
-    """S3 key transformation parser and formatter."""
+@dataclass
+class Parser:
+    """Memoized parser pattern and sources attributes set."""
 
-    def __init__(self, source_formatter: str = None, destination_formatter: str = None, **kwargs):
-        """S3 key formatter for repartitioning.
+    attributes: set
+    pattern: re.Pattern
 
-        Transforms original keys into a new ones, allowing for variable substitution and rearrangement.
 
-        Args:
-            source_formatter (str): Pythonic f-string description of the original key used for parsing variables
-                out of the key.
-            destination_formatter (str): Pythonic f-string used to format the key into its final form.
+def _get_param_names(formatter: str):
+    return set(str(p[1]) for p in Formatter().parse(formatter) if p[1])
 
-        """
-        if not source_formatter or not destination_formatter:
-            self.source_parser = None
-            return
 
-        source_formatter = source_formatter.replace(".", r"\.")
-        extension = r"\..{2,3}" if kwargs.get("unpack") else ""
-        self.source_parser = re.compile(
-            r"^" + re.sub(r"{(.*?)}", r"(?P<\g<1>>.*?)", source_formatter) + extension + "$"
-        )
+@lru_cache
+def _create_parser(source_formatter: str):
+    source_formatter = source_formatter.replace(".", r"\.")
+    return Parser(
+        _get_param_names(source_formatter), re.compile(r"^" + re.sub(r"{(.*?)}", r"(?P<\g<1>>.*?)", source_formatter))
+    )
 
-        param_names = lambda formatter: set(str(p[1]) for p in Formatter().parse(formatter) if p[1])  # noqa: E731
 
-        self.source_params = param_names(source_formatter)
-        self.destination_formatter = destination_formatter
-        self.destination_params = param_names(destination_formatter)
-        self.kwargs = self._generated_kwargs()
+def _get_additional_pattern(**kwargs):
+    return r"\..{2,3}$" if kwargs.get("unpack") else r"$"
 
-    def _generated_kwargs(self) -> Dict[str, Any]:
-        """Compute new default values for format variables.
 
-        Returns:
-            Dict[str, Any]: Default kwargs used for format method.
+@lru_cache(1)
+def _default_attributes():
+    now = datetime.now()
+    return dict(
+        datetime=now.isoformat(),
+        date=now.date().isoformat(),
+        **{k: f"{getattr(now, k):02}" for k in ("year", "month", "day", "hour", "minute", "second")},
+        weekday=now.weekday(),
+    )
 
-        """
-        kwargs = dict()
 
-        now = datetime.now()
-        for p in self.destination_params - self.source_params:
-            # Support `datetime` itself
-            if p == "datetime":
-                kwargs[p] = now.isoformat()
-            # Support `datetime` attributes
-            if hasattr(now, p):
-                attr = getattr(now, p)
-                kwargs[p] = attr().isoformat() if callable(attr) else attr
+def key_formatter(key: str, source_formatter: str = None, destination_formatter: str = None, **kwargs: dict) -> str:
+    """Transform key applying format.
 
-        return kwargs
+    Uses source and destination formatter to transform the original key into a new object key.
 
-    def format(self, key: str) -> str:
-        """Form a new key based on original key from argument.
+    Args:
+        key (str): Original key.
+        source_formatter (str, optional): Formatter string. Defaults to None.
+        destination_formatter (str, optional): Formatter string. Defaults to None.
 
-        Replace and restructure key to represent the proper new form.
+    Examples:
+        >>> key_formatter("first/second/third.csv.gz", "{a}/{b}/{rest}", "{date}/{a}/{rest}")
+        '2020-07-09/first/third.csv.gz'
 
-        Args:
-            key (str): Original key.
+        >>> key_formatter("first/second/third.csv.gz", "{a}/{b}/{rest}", "{year}/{month}/{day}/{a}/{b}/{rest}")
+        '2020/07/09/first/second/third.csv.gz'
 
-        Returns:
-            str: Formatted new key.
+        >>> key_formatter("first/second/third.csv.gz", "{a}/{b}/{rest}", "{b}/{a}/{rest}")
+        'second/first/third.csv.gz'
 
-        """
-        if not self.source_parser:
-            return key
+        >>> key_formatter("first/second/third.csv.gz", "{a}/{b}/{rest}", "{b}/{a}/{rest}")
+        'second/first/third.csv.gz'
 
-        match = self.source_parser.match(key)
-        if not match:
-            raise AttributeError("Key doesn't match the expected source format")
+        >>> key_formatter("first/second/third.csv.gz", "{a}/{b}/{rest}", "{b}/{a}/{rest}", unpack=True)
+        'second/first/third.csv'
 
-        self.kwargs.update({k: match[k] for k in self.source_params})
+    Raises:
+        AttributeError: When the key doesn't match the source formatter, we can't proceed.
 
-        return self.destination_formatter.format(**self.kwargs)
+    Returns:
+        str: Key in new format.
+
+    """
+    if not source_formatter or not destination_formatter:
+        return key
+
+    parser = _create_parser(source_formatter)
+    if not kwargs.get("unpack"):
+        pattern = re.compile(parser.pattern.pattern + r"$")
+    else:
+        pattern = re.compile(parser.pattern.pattern + r"\..{2,3}$")
+
+    match = pattern.match(key)
+    if not match:
+        raise AttributeError("Key doesn't match the expected source format")
+
+    attributes = dict(**_default_attributes(), **{k: match[k] for k in parser.attributes})
+
+    return destination_formatter.format(**attributes)

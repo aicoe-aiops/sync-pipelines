@@ -4,7 +4,7 @@ import shutil
 from typing import Iterable, List, Iterator
 from itertools import tee
 
-from .utils import S3FileSystem, S3File, logger, KeyFormatter
+from .utils import S3FileSystem, S3File, logger, key_formatter
 
 
 def copy(files: List[S3File]) -> None:
@@ -62,7 +62,7 @@ def calc_s3_files(source_path: str, clients: List[S3FileSystem]) -> Iterator[S3F
                 yield S3File(c, source_path)
                 continue
 
-            destination_path = KeyFormatter(clients[0].formatter, c.formatter, **c.flags).format(source_path)
+            destination_path = key_formatter(source_path, clients[0].formatter, c.formatter, **c.flags)
             yield S3File(c, destination_path)
 
 
