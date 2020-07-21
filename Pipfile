@@ -7,6 +7,9 @@ verify_ssl = true
 black = "*"
 mypy = "*"
 twine = "*"
+pytest = "*"
+pytest-mock = "*"
+pytest-cov = "*"
 
 [packages]
 s3fs = ">=0.4"
