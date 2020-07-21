@@ -5,7 +5,7 @@
 import click
 
 from solgate import lookup, transfer, send_report, __version__ as version
-from .utils import serialize, logger
+from .utils import serialize, logger, deserialize
 
 
 @click.group()
@@ -27,24 +27,41 @@ def cli(ctx, config):  # noqa: D301
     ctx.obj["CONFIG_PATH"] = config
 
 
-@cli.command("transfer")
-@click.argument("key", required=True, type=click.Path(exists=False))
+@cli.command("send")
+@click.argument("key", type=click.STRING, required=False)
+@click.option(
+    "-l",
+    "--listing-file",
+    type=click.Path(exists=True),
+    help=(
+        "Provide JSON file with list of objects to transfer."
+        "If set, solgate will ignore the KEY argument and use the listing file instead."
+    ),
+)
 @click.pass_context
-def _transfer(ctx, key: str):
-    """Initiate the transfer of S3 objects.
+def _send(ctx, key: str = None, listing_file: str = None):
+    """Sync S3 objects.
 
-    KEY is a path reference to S3 object that should be transferred.
+    KEY points to a S3 Object within the source base path, that is meant to be transferred.
     """
+    if listing_file:
+        files_to_transfer = deserialize(listing_file)
+    elif key:
+        files_to_transfer = [dict(key=key)]
+    else:
+        logger.error("Nothing to send through solgate.")
+        exit(1)
+
     try:
-        success = transfer(key, ctx.obj["CONFIG_PATH"])
+        success = transfer(files_to_transfer, ctx.obj["CONFIG_PATH"])
     except:  # noqa: E722
         logger.error("Unexpected error during transfer", exc_info=True)
         exit(1)
 
     if not success:
-        logger.error("Failed to perform a full sync", dict(key=key))
+        logger.error("Failed to perform a full sync")
         exit(1)
-    logger.info("Successfully synced file to all destinations", dict(key=key))
+    logger.info("Successfully synced all files to all destinations")
 
 
 @cli.command("list")

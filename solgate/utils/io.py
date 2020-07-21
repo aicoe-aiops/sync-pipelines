@@ -42,6 +42,20 @@ def serialize(obj: Any, filename: str) -> None:
         json.dump(obj, f, cls=CustomEncoder)
 
 
+def deserialize(filename: str) -> Any:
+    """Deserialize json file to Python object.
+
+    Args:
+        filename (str): File name or path.
+
+    Returns:
+        Any: Pythonic object
+
+    """
+    with open(filename, "r") as f:
+        return json.load(f)
+
+
 def _convert_config_value(section: SectionProxy, key: str) -> Union[str, bool]:
     """Parse ConfigParser's boolean values."""
     try:
