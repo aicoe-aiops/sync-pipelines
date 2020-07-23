@@ -18,7 +18,7 @@ setup(
     author_email="tcoufal@redhat.com",
     maintainer="Tom Coufal",
     maintainer_email="tcoufal@redhat.com",
-    url="https://github.com/aicoe-aiops/solgate",
+    url="https://github.com/aicoe-aiops/sync-pipelines",
     license="GPLv3+",
     packages=find_packages(),
     package_data={"solgate": [os.path.join("utils", "*.txt"), os.path.join("utils", "*.html")]},
