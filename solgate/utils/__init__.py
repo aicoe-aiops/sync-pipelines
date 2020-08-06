@@ -1,4 +1,4 @@
-"""Utilities module for Sync Pipelines."""
+"""Utilities module for Solgate."""
 
 # flake8: noqa
 

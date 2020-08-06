@@ -1,21 +1,27 @@
 #!/usr/bin/env python3
 
-"""CLI for Sync Pipeline."""
+"""CLI for Solgate."""
 
 import click
 
-from sync_pipeline import lookup, transfer, notify, __version__ as version
+from solgate import lookup, transfer, notify, __version__ as version
 from .utils import serialize, logger
 
 
 @click.group()
 @click.option("-c", "--config", type=click.Path(exists=True), help="Configuration file location.")
 @click.pass_context
-def cli(ctx, config):
-    """Sync Pipeline's CLI.
+def cli(ctx, config):  # noqa: D301
+    """Solgate - the data sync pipeline.
 
-    Sync given files between C3 and Ceph object storage. Allows for syncing to multiple destinations
-    as well as repartitioning on the fly.
+    Transfer given files between any S3 compatible storage: AWS S3, Ceph object storage, MinIO.
+
+    Solgate allows you:
+
+    \b
+    - To synchronize and mirror S3 buckets.
+    - Transfer data from a single source to multiple destinations simultaneously.
+    - Repartition data on the fly.
     """
     ctx.ensure_object(dict)
     ctx.obj["CONFIG_PATH"] = config
@@ -25,7 +31,7 @@ def cli(ctx, config):
 @click.argument("key", required=True, type=click.Path(exists=False))
 @click.pass_context
 def _transfer(ctx, key: str):
-    """Transfer S3 objects.
+    """Initiate the transfer of S3 objects.
 
     KEY is a path reference to S3 object that should be transferred.
     """
@@ -46,7 +52,7 @@ def _transfer(ctx, key: str):
 @click.option("-o", "--output", type=click.Path(exists=False), help="Output to a file instead of stdout.")
 @click.pass_context
 def _list(ctx, newer_than: str, output: str = None):
-    """Query the source bucket for available files to transfer.
+    """Query the source bucket for files ready to be transferred.
 
     Only files NEWER_THAN give value (added or modified) are listed.
     """
@@ -72,14 +78,14 @@ def _list(ctx, newer_than: str, output: str = None):
 # @click.option("-t", "--timestamp", envvar="WORKFLOW_TIMESTAMP")
 # @click.option("--host", envvar="ARGO_UI_HOST")
 def _notify():
-    """Send alert from Argo via email."""
+    """Send an workflow status alert from Argo environment via email."""
     notify()
 
 
 @cli.command("version")
 def _version():
-    """Get version of Sync Pipeline."""
-    click.echo(f"Sync Pipeline version: {version!s}")
+    """Get version of this Solgate."""
+    click.echo(f"Solgate version: {version!s}")
 
 
 if __name__ == "__main__":

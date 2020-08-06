@@ -1,4 +1,4 @@
-"""Sync Pipelines."""
+"""Solgate."""
 
 # flake8: noqa
 
@@ -7,4 +7,4 @@ from .transfer import transfer
 from .notify import notify
 from .version import __version__
 
-__name__ = "sync_pipeline"
+__name__ = "solgate"
