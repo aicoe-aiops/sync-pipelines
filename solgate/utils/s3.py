@@ -11,7 +11,7 @@ from botocore.exceptions import ClientError  # type: ignore
 from s3fs.errors import translate_boto_error  # type: ignore
 
 from .logging import logger
-from .io import read_config
+from .io import read_s3_config
 
 
 DEFAULT_ENDPOINTS = dict(source="https://s3.amazonaws.com/", destination="https://s3.upshift.redhat.com/")
@@ -42,7 +42,7 @@ class S3FileSystem:
 
         """
         self.name = name
-        self.is_source = bool(kwargs.pop("source", False))
+        self.is_source = name.lower().startswith("source_")
         self.endpoint_url = endpoint_url
         if not self.endpoint_url:
             self.endpoint_url = DEFAULT_ENDPOINTS["source"] if self.is_source else DEFAULT_ENDPOINTS["destination"]
@@ -69,11 +69,14 @@ class S3FileSystem:
 
         Create s3fs using credentials and paths from config files.
 
+        Args:
+            filename (str, optional): Configuration file location. Defaults to None.
+
         Returns:
             Iterable["S3FileSystem"]: S3 file system clients.
 
         """
-        config = read_config(filename)
+        config = read_s3_config(filename)
         clients = [cls(k, **v) for k, v in config]
 
         with_source_attribute = [*filter(lambda c: c.is_source, clients)]
