@@ -101,3 +101,13 @@ def test__create_parser(mocker, formatter, regex):
     """Created parser's regex should match the pattern."""
     mocker.patch.object(io, "_get_param_names").return_value = set()
     assert io._create_parser(formatter).pattern.pattern == regex
+
+
+def test_read_config(mocker):
+    """Should parse config file."""
+    mocker.patch("builtins.open", mocker.mock_open(read_data="a"))
+
+    with open("x") as f:
+        print(f.read())
+
+    assert False

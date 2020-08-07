@@ -15,7 +15,6 @@ from .io import read_config
 
 
 DEFAULT_ENDPOINTS = dict(source="https://s3.amazonaws.com/", destination="https://s3.upshift.redhat.com/")
-CONFIG_FILE = "/etc/s3_settings.ini"
 
 
 class S3FileSystem:
@@ -74,7 +73,6 @@ class S3FileSystem:
             Iterable["S3FileSystem"]: S3 file system clients.
 
         """
-        filename = filename or CONFIG_FILE
         config = read_config(filename)
         clients = [cls(k, **v) for k, v in config]
 

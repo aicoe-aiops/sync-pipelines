@@ -9,6 +9,8 @@ from functools import lru_cache
 from string import Formatter
 from typing import Any, Iterator, Tuple, Union
 
+DEFAULT_CONFIG_LOCATION = "/etc/solgate.ini"
+
 
 class CustomEncoder(json.JSONEncoder):
     """JSON encoder that handles dates and iterations."""
@@ -48,7 +50,7 @@ def _convert_config_value(section: SectionProxy, key: str) -> Union[str, bool]:
         return section.get(key)
 
 
-def read_config(filename: str) -> Iterator[Tuple[str, dict]]:
+def read_config(filename: str = None) -> Iterator[Tuple[str, dict]]:
     """Read INI file and parse values.
 
     Args:
@@ -58,6 +60,7 @@ def read_config(filename: str) -> Iterator[Tuple[str, dict]]:
         Iterator[Tuple[str, dict]]: Section name and content dict pair.
 
     """
+    filename = filename or DEFAULT_CONFIG_LOCATION
     config = ConfigParser()
     config.read(filename)
 
