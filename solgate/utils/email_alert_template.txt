@@ -20,4 +20,4 @@ Unable to parse failed tasks.
 {% endfor %}
 
 --
-View it on Argo UI: http://{{ argo_ui_host }}/workflows/{{ namespace }}/{{ name }}
+View it on Argo UI: http://{{ host }}/workflows/{{ namespace }}/{{ name }}
