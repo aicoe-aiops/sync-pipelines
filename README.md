@@ -1,181 +1,166 @@
-# Argo Workflows
+# Solgate
 
-Data ingress pipelines for DataHub via Argo pipelines.
+Yet another data sync pipelines job runner.
 
-## Runbook
+A CLI utility that is expected to be automated via container native workflow engines like [Argo](https://argoproj.github.io/argo/) or [Tekton](https://tekton.dev/).
 
-The Runbook for the Argo workflows can be found in the dh-runbooks repository at [ARGO-WORKFLOWS.md](https://gitlab.cee.redhat.com/data-hub/dh-runbooks/blob/master/ARGO-WORKFLOWS.md)
+## Installation
 
-## Installation and set up
+```sh
+pip install solgate
+```
 
-[Ansible Playbook Bundle](https://docs.openshift.com/container-platform/3.11/apb_devel/index.html) is used to deploy this repository. This is a common deployment strategy used for all the DataHub and ODH.
+## Configuration
 
-### Prerequisites
+Solgate relies on a configuration file that holds all the information required to fully perform the synchronization. This file is a standard INI/TOML file that contains following sections:
 
-1. Use [pipenv](https://pipenv.readthedocs.io/en/latest/). Install pipenv by running the following command:
+- Exactly one section starting with `source_`. This is a location specifying section where the data are sourced from.
+- Multiple (at least one) sections starting with `destination_`. These are also location specifying sections. Their purpose is to define sync destinations.
+- Section named `solgate` for a general configuration that is not specific to a single location.
 
-   ```bash
-   $ pip install --user pipenv
-   ...
+### Section `solgate`
 
-   $ pipenv sync --dev
-   Creating a virtualenv for this project…
-   ...
+All configuration in this section **is optional**. Use this section if you'd like to modify the default behavior. Default values are denoted below:
 
-   $ pipenv shell
-   Launching subshell in virtual environment…
-   ...
+```ini
+[solgate]
+alerts_smtp_server = smtp.corp.redhat.com
+alerts_from        = solgate-alerts@redhat.com
+alerts_to          = dev-null@redhat.com
+timedelta          = 1d
+```
+
+Description:
+
+- `alerts_smtp_server`, `alerts_from`, `alerts_to` are used for alerting only
+- `timedelta` defines a time window in which the objects in the source bucket must have been modified, to be eligible fo the bucket listing. Only files modified no later than `timedelta` from now are included.
+
+### Source section
+
+```ini
+[source_some_fancy_name]
+aws_access_key_id     = KEY_ID
+aws_secret_access_key = SECRET
+base_path             = DH-PLAYPEN/storage/input   ; at least the bucket name is required, sub path within this bucket is optional
+endpoint_url          = https://s3.amazonaws.com   ; optional, defaults to s3.amazonaws.com
+formatter             = {date}/{collection}.{ext}  ; optional, defaults to None
+```
+
+If the `formatter` is not set, no repartitioning is expected to happen and the S3 object key is left intact, same as it is in the source bucket (within the `base_path` context). Specifying the `formatter` in the source section only, **doesn't** result in repartitioning of all object by itself, only those destinations that also have this option specified are eligible for object key modifications.
+
+### Destination sections
+
+```ini
+[destination_some_fancy_name]
+aws_access_key_id     = KEY_ID
+aws_secret_access_key = SECRET
+base_path             = DH-PLAYPEN/storage/output      ; at least the bucket name is required, sub path within this bucket is optional
+endpoint_url          = https://s3.upshift.redhat.com  ; optional, defaults to s3.upshift.redhat.com
+formatter             = {date}/{collection}.{ext}      ; optional, defaults to None
+unpack                = yes                            ; optional, defaults to False/no
+```
+
+The `endpoint_url` defaults to a different value for destination compared to source section. This is due to the usual data origin and safe destination host.
+
+If the `formatter` is not set, no repartitioning is expected to happen and the S3 object key is left intact, same as it is in the source bucket (within the `base_path` context). If repartitioning is desired, the formatter string must be defined in the source section as well - otherwise object name can't be parsed properly from the source S3 object key.
+
+`unpack` option specifies if the gunzipped archives should be unpacked during the transfer. The `.gz` suffix is automatically dropped from the resulting object key, no matter if the repartitioning is on or off. Switching this option on results in weaker object validation, since the implicit metadata checksum and size checks can't be used to verify the file integrity.
+
+## Usage
+
+Solgate is mainly intended for use in automation within Argo Workflows. However it can be also used as a standalone CLI tool for manual transfers and (via extensions) for (TBD) manifest scaffold generation and (TBD) deployed instance monitoring.
+
+### List bucket for files ready to be transferred
+
+Before the actual sync can be run, it is required
+
+```sh
+solgate list
+```
+
+### Sync objects
+
+```sh
+solgate transfer
+```
+
+### Nofitication service
+
+```sh
+solgate notify
+```
+
+## Workflow manifests
+
+Additionally to the `solgate` package source code this repository also features deployment manifests in the `manifests` folder. The current implementation of Kubernetes manifests relies on [Argo](https://argoproj.github.io/argo/), [Argo Events](https://argoproj.github.io/argo-events/) and are structured in a [Kustomize](https://kustomize.io/) format. Environments for deployment are specified in the `manifests/overlays/ENV_NAME` folder.
+
+Each environment features multiple solgate workflow instances. Configuration `config.ini` file and selected triggers are defined in instance subfolder within the particular environment folder.
+
+### Deploy
+
+Environment deployments are expected to be handled via [Argo CD](https://argoproj.github.io/argo-cd/) in [AI-CoE SRE](https://github.com/AICoE/aicoe-sre/), however it can be done manually as well.
+
+Local prerequisites:
+
+- [Kustomize](https://kustomize.io/)
+- [sops](https://github.com/mozilla/sops)
+- [kustomize-sopssecretgenerator](https://github.com/goabout/kustomize-sopssecretgenerator)
+
+Note: Yes, we don't use [ksops] here, instead we are currently using a different sops abstraction. It is because we would like to track as much of the configuration files is a readable format (and generate the secrets from them on the fly), opposed to ksops, which requires Kubernetes secret resources which are base64 encoded (harder to review).
+
+Already deployed platform and running services:
+
+- [Argo](https://argoproj.github.io/argo/)
+- [Argo Events](https://argoproj.github.io/argo-events/)
+
+#### Build and deploy manifests
+
+```sh
+kustomize build --enable_alpha_plugins manifests/overlays/ENV_NAME | oc apply -f -
+```
+
+### Create a new instance
+
+**Will be handled via scaffold in next version!** <!-- noqa -->
+
+1. Create new folder named after the instance in the selected environment overlay.
+2. Create a `kustomization.yaml` file in this new folder with following content:
+
+   ```yaml
+   apiVersion: kustomize.config.k8s.io/v1beta1
+   kind: Kustomization
+
+   generators:
+     - ./secret-generator.yaml
    ```
 
-2. Use `oc` to provide Ansible Playbook Bundle with proper cluster connection. (TIP: It's useful to set up a OpenShift context for each cluster so you can switch different clusters and environments):
+3. Create a `secret-generator.yaml` file in this new folder with following content:
+
+   ```yaml
+   apiVersion: goabout.com/v1beta1
+   kind: SopsSecretGenerator
+   metadata:
+   name: NEW_INSTANCE_NAME
+   files:
+     - config.ini
+   ```
+
+4. Create a `config.ini` file in this folder and encrypt it via sops:
 
    ```sh
-   oc config set-cluster datahub --server https://datahub.psi.redhat.com:443
-   oc config set-credentials datahub --token=<YOUR USER TOKEN>
-   oc config set-context datahub --cluster=datahub --user=datahub
+   vim overlays/ENV_NAME/NEW_INSTANCE_NAME/config.ini
+   sops -e -i overlays/ENV_NAME/NEW_INSTANCE_NAME/config.ini
    ```
 
-   Ansible Playbook Bundle orchestration will reuse the current `oc` credentials. It also expects the target namespace to exist.
+5. Create all event source patch files for this instance (`webhook-es.yaml`, `calendar-es.yaml`, etc.).
+6. Update the resource and patch listing in the `overlays/ENV_NAME/kustomization.yaml`:
 
-### Deploy ODH Operator
+   ```yaml
+   resources:
+     - ...
+     - ./NEW_INSTANCE_NAME
 
-Follow the steps in this repo to deploy the ODH Operator: [dh-internal-odh-install](https://gitlab.cee.redhat.com/data-hub/dh-internal-odh-install)
-
-### Deploy Argo
-
-Follow the steps in this repo to deploy Argo and Argo events: [dh-argo](https://gitlab.cee.redhat.com/data-hub/dh-argo)
-
-## Deploy the workflows
-
-This repository currently supports `prod`, `stage` and `dev` environments, custom environments are described in the [next section](#set-up-custom-environment).
-
-To deploy the environment execute within your `pipenv` virtual environment:
-
-```bash
-$ ansible-playbook playbook.yaml \
-    --ask-vault-pass
-    -e kubeconfig=$HOME/.kube/config \
-    -e target_env=prod
-```
-
-If you'd like to check what OpenShift entities are generated via the playbook, if may be usefull to run the previous command with additional `--check` and `-vvv` arguments.
-
-## Available roles
-
-### Tools
-
-Lives in `roles/tools`. Hosts all utilities that sync-pipeline needs. It is built on top of S2I Python container and can be managed as a standalone resource with separate dependency resolution using nested Pipenv environment. It also contains a `WorkflowTemplate` that utilizes included tools and scripts for easier import into other workflows.
-
-### Sync Pipeline
-
-Linear workflow for S3 bucket synchronization:
-
-1. Check if new data are present in the source bucket.
-2. Sync the new content to destination bucket.
-3. Verify if the sync created new data in destination bucket.
-
-To define a new sync pipeline instance, simply update `sync_pipelines` key in your environment file in `vars` folder with:
-
-```yml
-sync_pipelines:
-  <PIPELINE_NAME>:
-    source: <SECRET_NAME> # Required
-    destination: <SECRET_NAME_OR_LIST> # Required
-    # Note: For all optional paramaters the default value is taken from root of the environment file. If not set there - from roles/sync-pipeline/defaults/main.yml
-    schedule: <CRON_STRING> # Optional
-    timedelta: <SYNCHRONIZED_DATA_WINDOW> # Optional
-    transfer_strategy: via-restructure # Optional
-    alerts_smtp_server: <SMTP_SERVER> # Optional
-    alerts_to: <LIST_OF_RECIPIENT_EMAIL_ADDRESSES> # Optional
-    alerts_from: <ALERT_SENDER_EMAIL_ADDRESS> # Optional
-```
-
-A pipeline definition specifies from which secret (`source`) to which other secret (`destination`) to sync the data. If the desired behavior is to sync the source data to multiple locations, you can list all the destinations as a list:
-
-```yml
-sync_pipelines:
-  pipeline-with-single-destination:
-    destination: destination_secret-name
-    ...
-  pipeline-with-multiple-destinations:
-    destination:
-      - first-destination-secret-name
-      - second-destination-secret-name
-```
-
-Both destinations will be synchronized from the `source` in paralel in the same workflow run.
-
-Secret name used as a value in `source` and `destination` fields, require corresponding entry in the [Secrets] section of the environment file.
-
-Using custom transfer strategy is possible via the `transfer_strategy` switch mentioned above. This allows you to select which transfer step in the workflow will be used. Currently supported strategies are:
-
-1. `default` - executes a MinIO client and performs `mc mirror` operation.
-2. `via-restructure` - executes custom `restructure.py` stript from `tools` image.
-
-All these pipeline config variables can be overwrite any top level context or default variable, see [Variable precedence](#variable-precedence).
-
-## Set up custom environment
-
-Target environment is set up via top level variables definition. To set up your own environment, just create a file in `./vars` folder named as `<ENV_NAME>-env.yml`.
-
-### Environment file structure
-
-```yml
-namespace: <OPENSHIFT_PROJECT_NAMESPACE>
-
-sync-pipelines: ... # Dict of deployed sync pipelines
-
-secrets: ... # Dict of all deployed secrets
-```
-
-### Secrets
-
-Synchronization pipelines use secrets to define the data source and destination. To allow that behavior, you have to specify the secrets in the environment file in a designated `secrets` section:
-
-```yml
-secrets:
-  <SECRET_NAME>:
-    url: <URL>
-    path: <INPUT_PATH>
-    access_key: <SECRET>
-    access_key_id: <KEY>
-  ...
-```
-
-### Other available variables and settings
-
-You can override any default variable value. These are the available properties, that can be set:
-
-```yml
-# For tools
-source_repository_uri: <TOOLS_SOURCE_REPO_URL>
-source_repository_ref: <TOOLS_REPO_REF>
-
-schedule: <CRON_SCHEDULE>
-timedelta: <TIME_WINDOW_TO_CHECK>
-
-# For email alerting
-alerts_smtp_server: <SMTP_SERVER>
-alerts_to: <LIST_OF_RECIPIENT_EMAIL_ADDRESSES>
-alerts_from: <ALERT_SENDER_EMAIL_ADDRESS>
-```
-
-### Variable precedence
-
-[Ansible docs](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#variable-precedence-where-should-i-put-a-variable) specifies variable precedence. In our case this means (sorted from the most prioritized to the least):
-
-1. Variables defined in `/vars/<ENV>-env.yml` in `sync-pipelines/<PIPELINE_NAME>` scope
-2. Variables defined in `/vars/<ENV>-env.yml` in top level
-3. Role defaults in `role/<ROLE_NAME>/defaults/<ANY_NAME>.yml`
-
-If still in doubt see [this test](https://gist.github.com/tumido/67688bce3471c9023128492f525e31c8).
-
-## Resources
-
-To learn more about this orchestration strategy, please visit:
-
-- Ansible Playbook Bundle:
-  - [OpenShift guides](https://docs.openshift.com/container-platform/3.11/apb_devel/index.html)
-  - [Github](https://github.com/automationbroker/apb)
-- Ansible [K8s module](https://docs.ansible.com/ansible/latest/modules/k8s_module.html#k8s-raw-module)
-- [Argo pipeline definition](https://argoproj.github.io/docs/argo/examples/readme.html)
+   patchesStrategicMerge:
+     - ...
+     - ./NEW_INSTANCE_NAME/EVENT_SOURCE_TYPE-es.yaml # For each event source trigger used
+   ```
