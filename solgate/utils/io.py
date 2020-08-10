@@ -99,19 +99,19 @@ def _default_attributes():
         datetime=now.isoformat(),
         date=now.date().isoformat(),
         **{k: f"{getattr(now, k):02}" for k in ("year", "month", "day", "hour", "minute", "second")},
-        weekday=now.weekday(),
+        weekday=str(now.weekday()),
     )
 
 
-def key_formatter(key: str, source_formatter: str = None, destination_formatter: str = None, **kwargs: dict) -> str:
+def key_formatter(key: str, source_formatter: str = "", destination_formatter: str = "", **kwargs: dict) -> str:
     """Transform key applying format.
 
     Uses source and destination formatter to transform the original key into a new object key.
 
     Args:
         key (str): Original key.
-        source_formatter (str, optional): Formatter string. Defaults to None.
-        destination_formatter (str, optional): Formatter string. Defaults to None.
+        source_formatter (str, optional): Formatter string. Defaults to "".
+        destination_formatter (str, optional): Formatter string. Defaults to "".
 
     Examples:
         >>> key_formatter("first/second/third.csv.gz", "{a}/{b}/{rest}", "{date}/{a}/{rest}")
@@ -130,14 +130,17 @@ def key_formatter(key: str, source_formatter: str = None, destination_formatter:
         'second/first/third.csv'
 
     Raises:
-        AttributeError: When the key doesn't match the source formatter, we can't proceed.
+        KeyError: When the key doesn't match the source formatter, we can't proceed.
 
     Returns:
         str: Key in new format.
 
     """
     if not source_formatter or not destination_formatter:
-        return key
+        if kwargs.get("unpack"):
+            source_formatter = destination_formatter = "{all}"
+        else:
+            return key
 
     parser = _create_parser(source_formatter)
     if not kwargs.get("unpack"):
@@ -147,7 +150,7 @@ def key_formatter(key: str, source_formatter: str = None, destination_formatter:
 
     match = pattern.match(key)
     if not match:
-        raise AttributeError("Key doesn't match the expected source format")
+        raise KeyError("Key doesn't match the expected source format")
 
     attributes = dict(**_default_attributes(), **{k: match[k] for k in parser.attributes})
 
