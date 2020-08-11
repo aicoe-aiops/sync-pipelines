@@ -88,10 +88,6 @@ def _create_parser(source_formatter: str):
     )
 
 
-def _get_additional_pattern(**kwargs):
-    return r"\..{2,3}$" if kwargs.get("unpack") else r"$"
-
-
 @lru_cache(1)
 def _default_attributes():
     now = datetime.now()
@@ -143,10 +139,8 @@ def key_formatter(key: str, source_formatter: str = "", destination_formatter: s
             return key
 
     parser = _create_parser(source_formatter)
-    if not kwargs.get("unpack"):
-        pattern = re.compile(parser.pattern.pattern + r"$")
-    else:
-        pattern = re.compile(parser.pattern.pattern + r"\..{2,3}$")
+    suffix_pattern = r"\..{2,3}$" if kwargs.get("unpack") else r"$"
+    pattern = re.compile(parser.pattern.pattern + suffix_pattern)
 
     match = pattern.match(key)
     if not match:
