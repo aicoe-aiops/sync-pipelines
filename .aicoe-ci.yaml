@@ -1,0 +1,5 @@
+check:
+  - thoth-build
+  - thoth-precommit
+release:
+  - upload-pypi-sesheta
