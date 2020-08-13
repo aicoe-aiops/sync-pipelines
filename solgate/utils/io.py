@@ -3,11 +3,13 @@
 import json
 import re
 from configparser import ConfigParser, SectionProxy
-from datetime import datetime
 from dataclasses import dataclass
+from datetime import datetime
 from functools import lru_cache
 from string import Formatter
-from typing import Any, Iterator, Tuple, Union
+from typing import Any, Dict, Iterator, Tuple, Union
+
+DEFAULT_CONFIG_LOCATION = "/etc/solgate.ini"
 
 
 class CustomEncoder(json.JSONEncoder):
@@ -48,24 +50,59 @@ def _convert_config_value(section: SectionProxy, key: str) -> Union[str, bool]:
         return section.get(key)
 
 
-def read_config(filename: str) -> Iterator[Tuple[str, dict]]:
+def _read_config(filename: str = None) -> ConfigParser:
     """Read INI file and parse values.
 
     Args:
-        filename (str): Config file location.
+        filename (str, optional): Configuration file location. Defaults to None.
 
-    Yields:
-        Iterator[Tuple[str, dict]]: Section name and content dict pair.
+    Returns:
+        ConfigParser: Pythonic representation of the config file.
 
     """
+    filename = filename or DEFAULT_CONFIG_LOCATION
     config = ConfigParser()
     config.read(filename)
 
     if not config.sections():
         raise IOError(f"Invalid config file {filename}")
 
+    return config
+
+
+def read_s3_config(filename: str = None) -> Iterator[Tuple[str, dict]]:
+    """Read INI file and parse S3 clients related configuration.
+
+    Args:
+        filename (str, optional): Configuration file location. Defaults to None.
+
+    Yields:
+        Iterator[Tuple[str, dict]]: Section name and content dict pair.
+
+    """
+    config = _read_config(filename)
     for s in config.sections():
-        yield s, {k: _convert_config_value(config[s], k) for k in config[s].keys()}
+        if s.startswith("source_") or s.startswith("destination_"):
+            yield s, {k: _convert_config_value(config[s], k) for k in config[s].keys()}
+
+
+def read_general_config(filename: str = None) -> Dict[str, Any]:
+    """Read INI file and parse general configuration.
+
+    Args:
+        filename (str, optional): Configuration file location. Defaults to None.
+
+    Returns:
+        dict: General configuration section data.
+
+    """
+    config = _read_config(filename)
+    try:
+        section = config["solgate"]
+    except KeyError:
+        raise IOError(f"Invalid config file {filename}, missing 'solgate' section.")
+
+    return {k: _convert_config_value(section, k) for k in section.keys()}
 
 
 @dataclass

@@ -4,9 +4,10 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
-from .utils import S3FileSystem, logger
+from .utils import S3FileSystem, logger, read_general_config
 
 KEYS = ("lastmodified", "etag", "key", "type", "size")
+DEFAULT_TIMEDELTA = "1d"
 
 
 def subset_metadata(meta: Dict[str, Any]) -> Dict[str, Any]:
@@ -52,7 +53,7 @@ def parse_timedelta(timestr: str) -> timedelta:
     return timedelta(**time_params)
 
 
-def lookup(timestr: str, config_file: str = None) -> List[Dict[str, Any]]:
+def lookup(config_file: str = None) -> List[Dict[str, Any]]:
     """Lookup recently modifined files.
 
     List files on S3 and filter those that were modified in recent history.
@@ -67,8 +68,9 @@ def lookup(timestr: str, config_file: str = None) -> List[Dict[str, Any]]:
             the base path.
 
     """
+    config = read_general_config(config_file)
     try:
-        oldest_date = datetime.now(timezone.utc) - parse_timedelta(timestr)
+        oldest_date = datetime.now(timezone.utc) - parse_timedelta(config.get("timedelta", DEFAULT_TIMEDELTA))
         s3 = S3FileSystem.from_config_file(config_file)[0]
     except EnvironmentError:
         logger.error("Environment not set properly, exiting", exc_info=True)

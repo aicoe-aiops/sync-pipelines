@@ -1,7 +1,9 @@
 """Test suite for solgate/utils/io.py."""
-
 import datetime
+from pathlib import Path
+
 import pytest
+
 from solgate.utils import io
 
 
@@ -101,3 +103,72 @@ def test__create_parser(mocker, formatter, regex):
     """Created parser's regex should match the pattern."""
     mocker.patch.object(io, "_get_param_names").return_value = set()
     assert io._create_parser(formatter).pattern.pattern == regex
+
+
+@pytest.fixture(scope="session")
+def fixture_dir():
+    """Locate fixtures directory in the test folder."""
+    return Path(__file__).absolute().parent / ".." / "fixtures"
+
+
+def test__read_config(fixture_dir):
+    """Should parse config file."""
+    config = io._read_config(fixture_dir / "sample_config.ini")
+
+    assert len(config.sections()) == 5
+    assert "solgate" in config.sections()
+
+
+def test__read_config_default_location(fixture_dir, mocker):
+    """Should read config from default location if no path is given."""
+    mocked_open = mocker.mock_open(read_data="[solgate]\n")
+    mocker.patch("builtins.open", mocked_open)
+    io._read_config()
+
+    mocked_open.assert_called_once()
+    assert mocked_open.call_args[0][0] == io.DEFAULT_CONFIG_LOCATION
+
+
+def test__read_config_empty(mocker):
+    """Should raise exception when config file is empty."""
+    mocked_open = mocker.mock_open()
+    mocker.patch("builtins.open", mocked_open)
+    with pytest.raises(EnvironmentError):
+        io._read_config()
+
+
+def test_read_s3_config(fixture_dir):
+    """Should parse s3 sections of the config."""
+    s3_sections = {k: v for k, v in io.read_s3_config(fixture_dir / "sample_config.ini")}
+
+    assert len(s3_sections.items()) == 4
+    assert "source_test" in s3_sections.keys()
+    assert sum([k.startswith("destination_") for k in s3_sections.keys()], 0) == 3
+
+    cred_keys = set(("aws_access_key_id", "aws_secret_access_key"))
+    assert all([cred_keys.issubset(v.keys()) for v in s3_sections.values()])
+
+
+def test_parse_booleans(mocker):
+    """Should properly parse boolean values."""
+    mocked_open = mocker.mock_open(read_data="[solgate]\ntrue_property = yes\nfalse_property = no")
+    mocker.patch("builtins.open", mocked_open)
+    section = io.read_general_config()
+
+    assert section["true_property"] is True
+    assert section["false_property"] is False
+
+
+def test_read_general_config(fixture_dir):
+    """Should parse s3 sections of the config."""
+    config = io.read_general_config(fixture_dir / "sample_config.ini")
+
+    assert len(config.items()) == 4
+
+
+def test_read_general_config_negative(mocker):
+    """Should raise exception when general section is missing from the config file."""
+    mocked_open = mocker.mock_open(read_data="[some]\nother = sections\n\n[but]\nnot = the\nones = we need")
+    mocker.patch("builtins.open", mocked_open)
+    with pytest.raises(EnvironmentError):
+        io.read_general_config()

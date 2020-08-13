@@ -48,7 +48,6 @@ def _transfer(ctx, key: str):
 
 
 @cli.command("list")
-@click.argument("newer-than", type=click.STRING)
 @click.option("-o", "--output", type=click.Path(exists=False), help="Output to a file instead of stdout.")
 @click.pass_context
 def _list(ctx, newer_than: str, output: str = None):
@@ -57,7 +56,7 @@ def _list(ctx, newer_than: str, output: str = None):
     Only files NEWER_THAN give value (added or modified) are listed.
     """
     try:
-        files = lookup(newer_than, ctx.obj["CONFIG_PATH"])
+        files = lookup(ctx.obj["CONFIG_PATH"])
         if output:
             serialize(files, output)
         else:
