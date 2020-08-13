@@ -197,6 +197,7 @@ def key_formatter(key: str, source_formatter: str = "", destination_formatter: s
     if not match:
         raise KeyError("Key doesn't match the expected source format")
 
-    attributes = dict(**_default_attributes(), **{k: match[k] for k in parser.attributes})
+    attributes = _default_attributes().copy()
+    attributes.update({k: match[k] for k in parser.attributes})
 
     return destination_formatter.format(**attributes)

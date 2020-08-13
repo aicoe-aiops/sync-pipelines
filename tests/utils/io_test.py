@@ -1,5 +1,6 @@
 """Test suite for solgate/utils/io.py."""
 import datetime
+import importlib
 
 import pytest
 
@@ -19,10 +20,12 @@ from solgate.utils import io
         ("file.csv.gz", "", "{rest}", "file.csv.gz"),
         ("file.csv.gz", "{rest}", "", "file.csv.gz"),
         ("file.csv.gz", "{filename}.{ext}.{comp}", "{filename}", "file"),
+        ("2000-01-01/second/file.csv.gz", "{date}/{b}/{rest}", "{b}/{date}/{rest}", "second/2000-01-01/file.csv.gz"),
     ],
 )
 def test_key_formatter(mocker, key, source_format, destination_format, result):
     """Test parsing and usage of default attributes."""
+    importlib.reload(io)
     mocked_datetime = mocker.patch("solgate.utils.io.datetime")
     mocked_datetime.now.return_value = datetime.datetime(2020, 1, 1)
     assert io.key_formatter(key, source_format, destination_format) == result
