@@ -4,7 +4,7 @@
 
 import click
 
-from solgate import lookup, transfer, send_report, __version__ as version
+from solgate import lookup, send, send_report, __version__ as version
 from .utils import serialize, logger, deserialize
 
 
@@ -53,7 +53,7 @@ def _send(ctx, key: str = None, listing_file: str = None):
         exit(1)
 
     try:
-        success = transfer(files_to_transfer, ctx.obj["CONFIG_PATH"])
+        success = send(files_to_transfer, ctx.obj["CONFIG_PATH"])
     except:  # noqa: E722
         logger.error("Unexpected error during transfer", exc_info=True)
         exit(1)

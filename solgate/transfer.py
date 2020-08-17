@@ -54,7 +54,7 @@ def calc_s3_files(source_path: str, clients: List[S3FileSystem]) -> Iterator[S3F
 
     """
     if not clients[0].formatter:
-        yield from [S3File(c, source_path) for c in clients[1:]]
+        yield from [S3File(c, source_path) for c in clients]
     else:
         yield S3File(clients[0], source_path)
         for c in clients[1:]:
@@ -117,7 +117,7 @@ def _transfer_single_file(source_path: str, clients: List[S3FileSystem]) -> bool
     return True
 
 
-def transfer(files_to_transfer: List[Dict[str, Any]], config_file: str = None) -> bool:
+def send(files_to_transfer: List[Dict[str, Any]], config_file: str = None) -> bool:
     """Transfer recent data between S3s, multiple files.
 
     Args:
@@ -134,13 +134,17 @@ def transfer(files_to_transfer: List[Dict[str, Any]], config_file: str = None) -
         logger.error("Environment not set properly, exiting", exc_info=True)
         return False
 
+    if not files_to_transfer:
+        logger.error("No files to transfer")
+        return False
+
     failed = []
     for source_file in files_to_transfer:
         try:
             if not _transfer_single_file(source_file["key"], clients):
                 failed.append(source_file)
         except KeyError:
-            logger.error("Unable to parse file key", source_file, exc_info=True)
+            logger.error("Unable to parse file key", dict(file=source_file), exc_info=True)
             failed.append(source_file)
 
     if failed:
