@@ -2,37 +2,25 @@
 
 import pytest
 
-from moto import mock_s3
-from s3fs import S3FileSystem
-from pathlib import Path
-
 from solgate import transfer
 from solgate.utils import S3File
-
-
-@pytest.fixture
-def s3_file_system(mocker):
-    """Stub S3FileSystem without mocking S3."""
-    mocked_s3_fs = mocker.patch("solgate.transfer.S3FileSystem")
-    mocked_s3_fs.from_config_file.return_value = [mocked_s3_fs]
-    return mocked_s3_fs
 
 
 @pytest.mark.parametrize(
     "file_list", ([dict(key="a/b/file.csv")], [dict(key="a/b/file1.csv"), dict(key="a/b/file2.csv")])
 )
-def test_send(mocker, file_list, s3_file_system):
+def test_send(mocker, file_list, mocked_solgate_s3_file_system):
     """Should request files to be sent to clients."""
     mocked_transfer_single_file = mocker.patch("solgate.transfer._transfer_single_file")
 
     transfer.send(file_list)
 
     for f in file_list:
-        mocked_transfer_single_file.assert_any_call(f["key"], [s3_file_system])
+        mocked_transfer_single_file.assert_any_call(f["key"], [mocked_solgate_s3_file_system])
 
 
 @pytest.mark.parametrize("file_list", ([], [dict()], [dict(not_a_key="a/b/file.csv")], [dict(key="file.csv"), dict()]))
-def test_send_no_key(mocker, file_list, s3_file_system):
+def test_send_no_key(mocker, file_list, mocked_solgate_s3_file_system):
     """Should fail to transfer files where the key is missing."""
     mocker.patch("solgate.transfer._transfer_single_file")
 
@@ -46,30 +34,13 @@ def test_send_not_configured_properly(mocker):
     assert transfer.send([], config_file="/this/file/doesnt/exist.ini") is False
 
 
-def test_send_unable_to_transfer(mocker, s3_file_system):
+def test_send_unable_to_transfer(mocker, mocked_solgate_s3_file_system):
     """Should log failures."""
     mocker.patch("solgate.transfer._transfer_single_file", return_value=False)
 
     spy_send = mocker.spy(transfer.logger, "error")
     assert transfer.send([dict(key="a/b/file.csv")]) is False
     spy_send.assert_called_with(mocker.ANY, dict(failed_files=[dict(key="a/b/file.csv")]))
-
-
-@pytest.fixture(scope="session")
-def fixture_dir():
-    """Locate fixtures directory in the test folder."""
-    return Path(__file__).absolute().parent / "fixtures"
-
-
-@pytest.fixture
-def mocked_s3(fixture_dir, request):
-    """Yield S3FileSystem S3 clients with mocked backend."""
-    with mock_s3():
-        s3fs_instances = transfer.S3FileSystem.from_config_file(fixture_dir / request.param)
-        for instance in s3fs_instances:
-            instance.s3fs = S3FileSystem(key=instance.aws_access_key_id, secret=instance.aws_secret_access_key)
-            instance.s3fs.s3.create_bucket(Bucket=instance._S3FileSystem__base_path.split("/")[0])
-        yield s3fs_instances
 
 
 @pytest.mark.parametrize("mocked_s3", ["sample_config.ini"], indirect=["mocked_s3"])
