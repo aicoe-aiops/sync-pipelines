@@ -4,7 +4,7 @@
 
 import click
 
-from solgate import lookup, transfer, notify, __version__ as version
+from solgate import lookup, transfer, send_report, __version__ as version
 from .utils import serialize, logger
 
 
@@ -66,19 +66,41 @@ def _list(ctx, newer_than: str, output: str = None):
         exit(1)
 
 
-@cli.command("notify")
-# @click.option("--smtp_server", envvar="ALERT_EMAIL_SMTP_SERVER")
-# @click.option("--from", envvar="ALERT_FROM_EMAIL")
-# @click.option("--to", envvar="ALERT_TO_EMAIL_LIST")
-# @click.option("--failures", envvar="WORKFLOW_FAILURES")
-# @click.option("-n", "--name", envvar="WORKFLOW_NAME")
-# @click.option("--namespace", envvar="WORKFLOW_NAMESPACE")
-# @click.option("-s", "--status", envvar="WORKFLOW_STATUS")
-# @click.option("-t", "--timestamp", envvar="WORKFLOW_TIMESTAMP")
-# @click.option("--host", envvar="ARGO_UI_HOST")
-def _notify():
-    """Send an workflow status alert from Argo environment via email."""
-    notify()
+@cli.command("report")
+@click.option(
+    "--failures",
+    envvar="WORKFLOW_FAILURES",
+    default="",
+    type=click.STRING,
+    help="JSON serialized into a string listing all the failed workflow nodes.",
+)
+@click.option("-n", "--name", envvar="WORKFLOW_NAME", type=click.STRING, help="Workflow instance name.")
+@click.option(
+    "--namespace",
+    envvar="WORKFLOW_NAMESPACE",
+    type=click.STRING,
+    help="Project namespace where the workflow was executed.",
+)
+@click.option(
+    "-s", "--status", envvar="WORKFLOW_STATUS", type=click.STRING, help="Current status of the workflow execution."
+)
+@click.option("-t", "--timestamp", envvar="WORKFLOW_TIMESTAMP", type=click.STRING, help="Workflow execution timestamp.")
+@click.option(
+    "--host",
+    envvar="ARGO_UI_HOST",
+    type=click.STRING,
+    help="Argo UI external facing route host, which can be used to format hyperlinks to given workflow execution.",
+)
+@click.pass_context
+def _report(
+    ctx, failures: str, name: str, namespace: str, status: str, timestamp: str, host: str,
+):
+    """Send an workflow status alert from Argo environment via email.
+
+    Command expects to be passed values matching available Argo variables as described here
+    https://github.com/argoproj/argo/blob/master/docs/variables.md#global
+    """
+    send_report(name, namespace, status, host, timestamp, failures, ctx.obj["CONFIG_PATH"])
 
 
 @cli.command("version")

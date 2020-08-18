@@ -1,6 +1,5 @@
 """Test suite for solgate/utils/io.py."""
 import datetime
-from pathlib import Path
 
 import pytest
 
@@ -103,12 +102,6 @@ def test__create_parser(mocker, formatter, regex):
     """Created parser's regex should match the pattern."""
     mocker.patch.object(io, "_get_param_names").return_value = set()
     assert io._create_parser(formatter).pattern.pattern == regex
-
-
-@pytest.fixture(scope="session")
-def fixture_dir():
-    """Locate fixtures directory in the test folder."""
-    return Path(__file__).absolute().parent / ".." / "fixtures"
 
 
 def test__read_config(fixture_dir):
