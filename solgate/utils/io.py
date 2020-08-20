@@ -42,6 +42,20 @@ def serialize(obj: Any, filename: str) -> None:
         json.dump(obj, f, cls=CustomEncoder)
 
 
+def deserialize(filename: str) -> Any:
+    """Deserialize json file to Python object.
+
+    Args:
+        filename (str): File name or path.
+
+    Returns:
+        Any: Pythonic object
+
+    """
+    with open(filename, "r") as f:
+        return json.load(f)
+
+
 def _convert_config_value(section: SectionProxy, key: str) -> Union[str, bool]:
     """Parse ConfigParser's boolean values."""
     try:
@@ -183,6 +197,7 @@ def key_formatter(key: str, source_formatter: str = "", destination_formatter: s
     if not match:
         raise KeyError("Key doesn't match the expected source format")
 
-    attributes = dict(**_default_attributes(), **{k: match[k] for k in parser.attributes})
+    attributes = _default_attributes().copy()
+    attributes.update({k: match[k] for k in parser.attributes})
 
     return destination_formatter.format(**attributes)

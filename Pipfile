@@ -10,6 +10,7 @@ twine = "*"
 pytest = "*"
 pytest-mock = "*"
 pytest-cov = "*"
+moto = "*"
 
 [packages]
 s3fs = ">=0.4"

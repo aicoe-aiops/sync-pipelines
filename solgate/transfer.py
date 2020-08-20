@@ -1,10 +1,10 @@
 """Transfer files."""
 
 import shutil
-from typing import Iterable, List, Iterator
 from itertools import tee
+from typing import Any, Dict, Iterable, Iterator, List
 
-from .utils import S3FileSystem, S3File, logger, key_formatter
+from .utils import S3File, S3FileSystem, key_formatter, logger
 
 
 def copy(files: List[S3File]) -> None:
@@ -54,7 +54,7 @@ def calc_s3_files(source_path: str, clients: List[S3FileSystem]) -> Iterator[S3F
 
     """
     if not clients[0].formatter:
-        yield from [S3File(c, source_path) for c in clients[1:]]
+        yield from [S3File(c, source_path) for c in clients]
     else:
         yield S3File(clients[0], source_path)
         for c in clients[1:]:
@@ -82,23 +82,17 @@ def verify(files: Iterable[S3File]) -> bool:
     return all(a == b for a, b in zip(file_a, file_b))
 
 
-def transfer(source_path: str, config_file: str = None) -> bool:
-    """Transfer recent data between S3s.
+def _transfer_single_file(source_path: str, clients: List[S3FileSystem]) -> bool:
+    """Transfer single object between S3s.
 
-    Arguments:
-        source_path (str): Relative path in object S3 key.
-        config_file (str, optional): Path to configuration file.
+    Args:
+        source_path (str): Key to the object within the source S3 bucket.
+        clients (List[S3FileSystem]): S3 clients to sync between.
 
     Returns:
-        bool: True if success
+        bool: True if success.
 
     """
-    try:
-        clients = S3FileSystem.from_config_file(config_file)
-    except EnvironmentError:
-        logger.error("Environment not set properly, exiting", exc_info=True)
-        return False
-
     try:
         files = [f for f in calc_s3_files(source_path, clients)]
         logger.info(
@@ -114,10 +108,46 @@ def transfer(source_path: str, config_file: str = None) -> bool:
         logger.error("Failed to transfer a file", exc_info=True)
         return False
 
-    # logger.info("Verify file", dict(files=files))
-    # if not verify(files):
-    #     logger.warning("Verification failed", dict(files=files))
-    #     return False
+    logger.info("Verifying file", dict(files=files))
+    if not verify(files):
+        logger.warning("Verification failed", dict(files=files))
+        return False
 
-    # logger.info("Verified", dict(files=files))
+    logger.info("Verified", dict(files=files))
+    return True
+
+
+def send(files_to_transfer: List[Dict[str, Any]], config_file: str = None) -> bool:
+    """Transfer recent data between S3s, multiple files.
+
+    Args:
+        filename (str): Json file that contains list of S3 objects to be transferred.
+        config_file (str, optional): Path to configuration file. Defaults to None.
+
+    Returns:
+        bool: True if success
+
+    """
+    try:
+        clients = S3FileSystem.from_config_file(config_file)
+    except EnvironmentError:
+        logger.error("Environment not set properly, exiting", exc_info=True)
+        return False
+
+    if not files_to_transfer:
+        logger.error("No files to transfer")
+        return False
+
+    failed = []
+    for source_file in files_to_transfer:
+        try:
+            if not _transfer_single_file(source_file["key"], clients):
+                failed.append(source_file)
+        except KeyError:
+            logger.error("Unable to parse file key", dict(file=source_file), exc_info=True)
+            failed.append(source_file)
+
+    if failed:
+        logger.error("Some files failed to be transferred", dict(failed_files=failed))
+        return False
     return True
