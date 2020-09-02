@@ -27,9 +27,9 @@ def subset_metadata(meta: Dict[str, Any]) -> Dict[str, Any]:
 
 # fmt: off
 REGEX = re.compile(
-    r"((?P<days>\d+?)d)?"
-    r"((?P<hours>\d+?)h)?"
-    r"((?P<minutes>\d+?)m)?"
+    r"((?P<days>\d+?)d)?\W*"
+    r"((?P<hours>\d+?)h)?\W*"
+    r"((?P<minutes>\d+?)m)?\W*"
     r"((?P<seconds>\d+?)s)?"
 )
 # fmt: on
@@ -46,14 +46,16 @@ def parse_timedelta(timestr: str) -> timedelta:
 
     """
     parts = REGEX.match(timestr)
-    if not parts:
+
+    time_params = {k: int(v) for k, v in parts.groupdict().items() if v}  # type: ignore
+
+    if not time_params:
         raise EnvironmentError("Timedelta format is not valid")
 
-    time_params = {k: int(v) for k, v in parts.groupdict().items() if v}
     return timedelta(**time_params)
 
 
-def lookup(config_file: str = None) -> List[Dict[str, Any]]:
+def list_source(config_file: str = None) -> List[Dict[str, Any]]:
     """Lookup recently modifined files.
 
     List files on S3 and filter those that were modified in recent history.
