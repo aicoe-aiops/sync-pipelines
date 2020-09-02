@@ -1,6 +1,8 @@
 """Test suite for solgate/utils/io.py."""
 import datetime
 import importlib
+from dataclasses import dataclass
+from json import dumps
 
 import pytest
 
@@ -168,3 +170,44 @@ def test_read_general_config_negative(mocker):
     mocker.patch("builtins.open", mocked_open)
     with pytest.raises(EnvironmentError):
         io.read_general_config()
+
+
+def test_deserialize(mocker):
+    """Should deserialize from JSON."""
+    mocked_open = mocker.mock_open(read_data='{"a":"b"}')
+    mocker.patch("builtins.open", mocked_open)
+    assert io.deserialize("file.json") == dict(a="b")
+
+
+def test_serialize(mocker):
+    """Should serialize to JSON."""
+    mocked_open = mocker.patch("builtins.open")
+    io.serialize(dict(a="b"), "file.json")
+
+    mocked_open.assert_called_once_with("file.json", "w")
+    calls = mocked_open.return_value.__enter__.return_value.write.call_args_list
+    args = "".join(c.args[0] for c in calls)
+    assert args == '{"a": "b"}'
+
+
+@pytest.mark.parametrize(
+    "input,output",
+    [
+        pytest.param(range(2), "[0, 1]", id="generator"),
+        pytest.param(datetime.datetime(2020, 1, 1), '"2020-01-01T00:00:00"', id="datetime"),
+    ],
+)
+def test_custom_encoder(input, output):
+    """Should dump custom types to JSON."""
+    assert output == dumps(input, cls=io.CustomEncoder)
+
+
+def test_custom_encoder_default():
+    """Should raise default TypeError when unserializable."""
+    # pydocstyle: D202
+    @dataclass
+    class Something:
+        something: str
+
+    with pytest.raises(TypeError):
+        dumps(Something("abc"), cls=io.CustomEncoder)

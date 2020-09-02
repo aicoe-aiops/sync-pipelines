@@ -27,7 +27,7 @@ class CustomEncoder(json.JSONEncoder):
         except AttributeError:
             pass
 
-        return super().default(self, o)
+        return super().default(o)
 
 
 def serialize(obj: Any, filename: str) -> None:
