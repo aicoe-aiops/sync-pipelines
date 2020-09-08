@@ -1,0 +1,93 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: solgate
+spec:
+  templates:
+    - name: entrypoint
+      steps:
+        - - name: lookup
+            template: lookup
+        - - name: sync
+            template: sync
+
+    - name: exit-handler
+      steps:
+        - - name: notify
+            template: notify
+            when: "{{workflow.status}} != Succeeded"
+
+    - name: lookup
+      outputs:
+        parameters:
+          - name: objects-to-transfer
+            valueFrom:
+              path: /mnt/vol/filelist.json
+      container:
+        image: solgate:latest
+        command: ["solgate", "list"]
+        args:
+          - -o
+          - /mnt/vol/filelist.json
+        resources:
+          limits:
+            cpu: 500m
+            memory: 300Mi
+          requests:
+            cpu: 250m
+            memory: 100Mi
+        volumeMounts:
+          - name: config
+            mountPath: /etc/solgate.ini
+          - name: workdir
+            mountPath: /mnt/vol
+      volumes:
+        - name: config
+          secret:
+            secretName: "{{workflow.parameters.config}}"
+        - name: workdir
+          emptyDir: {}
+
+    - name: sync
+      container:
+        image: solgate:latest
+        command: ["solgate", "transfer"]
+        resources:
+          limits:
+            cpu: 500m
+            memory: 300Mi
+          requests:
+            cpu: 250m
+            memory: 100Mi
+        volumeMounts:
+          - name: config
+            mountPath: /etc/solgate.ini
+      volumes:
+        - name: config
+          secret:
+            secretName: "{{workflow.parameters.config}}"
+
+    - name: notify
+      container:
+        image: solgate:latest
+        command: ["solgate", "report"]
+        env:
+          - name: WORKFLOW_FAILURES
+            value: "{{workflow.failures}}"
+          - name: WORKFLOW_NAME
+            value: "{{workflow.name}}"
+          - name: WORKFLOW_NAMESPACE
+            value: "{{workflow.namespace}}"
+          - name: WORKFLOW_STATUS
+            value: "{{workflow.status}}"
+          - name: WORKFLOW_TIMESTAMP
+            value: "{{workflow.creationTimestamp}}"
+          - name: ARGO_UI_HOST
+            value: ""
+        volumeMounts:
+          - name: config
+            mountPath: /etc/solgate.ini
+      volumes:
+        - name: config
+          secret:
+            secretName: "{{workflow.parameters.config}}"

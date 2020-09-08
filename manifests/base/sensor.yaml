@@ -1,0 +1,63 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: solgate-sensor
+spec:
+  template:
+    serviceAccountName: argo-events-sa
+
+  dependencies:
+    - name: any-dep
+      gatewayName: "solgate-*"
+      eventName: "*"
+
+  subscription:
+    http:
+      port: 9300
+
+  triggers:
+    - template:
+        name: "solgate-trigger"
+        k8s:
+          group: argoproj.io
+          version: v1alpha1
+          resource: workflows
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: solgate-
+              spec:
+                arguments:
+                  parameters:
+                    - name: config
+                      value: WILL_BE_REPLACED
+                entrypoint: entrypoint
+                onExit: exit-handler
+                templates:
+                  - name: entrypoint
+                    steps:
+                      - - name: entrypoint
+                          templateRef:
+                            name: solgate
+                            template: entrypoint
+                  - name: exit-handler
+                    steps:
+                      - - name: exit-handler
+                          templateRef:
+                            name: solgate
+                            template: exit-handler
+
+      parameters:
+        - dest: k8s.source.resource.metadata.generateName
+          operation: append
+          src:
+            dependencyName: any-dep
+            contextTemplate: "{{.Input.subject}}-"
+        - dest: k8s.source.resource.spec.arguments.parameters.0.value
+          operation: overwrite
+          src:
+            dependencyName: any-dep
+            contextTemplate: "{{.Input.subject}}"

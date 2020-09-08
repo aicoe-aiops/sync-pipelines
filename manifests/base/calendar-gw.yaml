@@ -1,0 +1,13 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Gateway
+metadata:
+  name: solgate-calendar
+spec:
+  type: calendar
+  eventSourceRef:
+    name: solgate-calendar
+  template:
+    serviceAccountName: argo-events-sa
+  subscribers:
+    http:
+      - "http://solgate-sensor-sensor:9300/"
