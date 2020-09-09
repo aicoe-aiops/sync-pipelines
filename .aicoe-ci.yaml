@@ -3,3 +3,10 @@ check:
   - thoth-precommit
 release:
   - upload-pypi-sesheta
+
+build:
+  base-image: registry.access.redhat.com/ubi8/python-38:latest
+  registry: quay.io
+  registry-org: thoth-station
+  registry-project: solgate
+  registry-secret: thoth-station-thoth-pusher-secret
