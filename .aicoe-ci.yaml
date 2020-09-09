@@ -9,4 +9,4 @@ build:
   registry: quay.io
   registry-org: thoth-station
   registry-project: solgate
-  registry-secret: thoth-pusher
+  registry-secret: thoth-station-thoth-pusher-secret
