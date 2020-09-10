@@ -4,7 +4,7 @@
 
 import click
 
-from solgate import lookup, send, send_report, __version__ as version
+from solgate import list_source, send, send_report, __version__ as version
 from .utils import serialize, logger, deserialize
 
 
@@ -73,7 +73,7 @@ def _list(ctx, newer_than: str, output: str = None):
     Only files NEWER_THAN give value (added or modified) are listed.
     """
     try:
-        files = lookup(ctx.obj["CONFIG_PATH"])
+        files = list_source(ctx.obj["CONFIG_PATH"])
         if output:
             serialize(files, output)
         else:

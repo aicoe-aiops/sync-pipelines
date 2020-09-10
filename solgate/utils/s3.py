@@ -7,8 +7,6 @@ from operator import attrgetter
 from typing import Callable, Dict, Optional, List, Any
 
 import s3fs  # type: ignore
-from botocore.exceptions import ClientError  # type: ignore
-from s3fs.errors import translate_boto_error  # type: ignore
 
 from .logging import logger
 from .io import read_s3_config
@@ -138,16 +136,12 @@ class S3FileSystem:
         if unpack and mode != "rb":
             raise RuntimeError("Unable to unpack on write.")
 
-        try:
-            with self.s3fs.open(f"{self.__base_path}/{path}", mode, **kwargs) as f:
-                if not unpack:
-                    yield f
-                else:
-                    with GzipFile(fileobj=f) as f_unpacked:
-                        yield f_unpacked
-
-        except ClientError as e:
-            raise translate_boto_error(e)
+        with self.s3fs.open(f"{self.__base_path}/{path}", mode, **kwargs) as f:
+            if not unpack:
+                yield f
+            else:
+                with GzipFile(fileobj=f) as f_unpacked:
+                    yield f_unpacked
 
     def info(self, path: str) -> Dict[str, str]:
         """Fetch file object info metadata.
@@ -182,7 +176,7 @@ class S3FileSystem:
         """
         dest_base_path = dest_base_path or self.__base_path
 
-        return self.s3fs.copy(f"{self.__base_path}/{source}", f"{dest_base_path}/{dest}")
+        return self.s3fs.copy(f"{self.__base_path}/{source}", f"{dest_base_path.rstrip('/')}/{dest}")
 
     def __eq__(self, other: object) -> bool:
         """Compare S3FileSystem to other objects."""
@@ -226,8 +220,9 @@ class S3File:
             logger.warning("ETag is not a MD5 hash, falling back to 'size'")
             if self.info["size"] != other.info["size"]:
                 return False
+            return True
 
-        if self.info["etag"] != self.info["etag"]:
+        if self.info["etag"] != other.info["etag"]:
             return False
 
         return True
