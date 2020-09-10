@@ -1,0 +1,10 @@
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: solgate-webhook
+spec:
+  webhook:
+    dev-instance:
+      port: "12000"
+      endpoint: /dev-instance
+      method: POST
