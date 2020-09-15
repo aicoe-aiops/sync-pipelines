@@ -67,7 +67,7 @@ def _send(ctx, key: str = None, listing_file: str = None):
 @cli.command("list")
 @click.option("-o", "--output", type=click.Path(exists=False), help="Output to a file instead of stdout.")
 @click.pass_context
-def _list(ctx, newer_than: str, output: str = None):
+def _list(ctx, output: str = None):
     """Query the source bucket for files ready to be transferred.
 
     Only files NEWER_THAN give value (added or modified) are listed.
@@ -124,7 +124,3 @@ def _report(
 def _version():
     """Get version of this Solgate."""
     click.echo(f"Solgate version: {version!s}")
-
-
-if __name__ == "__main__":
-    cli()
