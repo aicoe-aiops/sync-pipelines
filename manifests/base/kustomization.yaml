@@ -8,3 +8,11 @@ resources:
   - ./webhook-gw.yaml
   - ./sensor.yaml
   - ./wftmpl.yaml
+
+configurations:
+  - image-transformer-configuration.yaml
+
+images:
+  - name: solgate
+    newName: quay.io/thoth-station/solgate
+    newTag: latest
