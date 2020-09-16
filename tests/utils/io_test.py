@@ -135,13 +135,16 @@ def test__read_config_empty(mocker):
         io._read_config()
 
 
-def test_read_s3_config(fixture_dir):
+@pytest.mark.parametrize(
+    "config_file,number_of_destinations", [("sample_config.ini", 3), ("single_destination.ini", 1)]
+)
+def test_read_s3_config(fixture_dir, config_file, number_of_destinations):
     """Should parse s3 sections of the config."""
-    s3_sections = {k: v for k, v in io.read_s3_config(fixture_dir / "sample_config.ini")}
+    s3_sections = {k: v for k, v in io.read_s3_config(fixture_dir / config_file)}
 
-    assert len(s3_sections.items()) == 4
-    assert "source_test" in s3_sections.keys()
-    assert sum([k.startswith("destination_") for k in s3_sections.keys()], 0) == 3
+    assert len(s3_sections.items()) == number_of_destinations + 1
+    assert "source" in s3_sections.keys()
+    assert sum([k.startswith("destination") for k in s3_sections.keys()], 0) == number_of_destinations
 
     cred_keys = set(("aws_access_key_id", "aws_secret_access_key"))
     assert all([cred_keys.issubset(v.keys()) for v in s3_sections.values()])

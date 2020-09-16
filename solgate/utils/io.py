@@ -96,7 +96,7 @@ def read_s3_config(filename: str = None) -> Iterator[Tuple[str, dict]]:
     """
     config = _read_config(filename)
     for s in config.sections():
-        if s.startswith("source_") or s.startswith("destination_"):
+        if s.startswith("source") or s.startswith("destination"):
             yield s, {k: _convert_config_value(config[s], k) for k in config[s].keys()}
 
 

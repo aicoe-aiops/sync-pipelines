@@ -49,7 +49,7 @@ def test_calc_s3_files(mocked_s3):
     gen = lambda: transfer.calc_s3_files("2020-01-01/collection_name.csv.gz", mocked_s3)  # noqa
 
     assert [(f.client.name, f.key) for f in gen()] == [
-        ("source_test", "2020-01-01/collection_name.csv.gz"),
+        ("source", "2020-01-01/collection_name.csv.gz"),
         ("destination_unpack_historic", "collection_name/historic/2020-01-01-collection_name.csv"),
         ("destination_unpack_latest", "collection_name/latest/full_data.csv"),
         ("destination_raw", "2020-01-01/collection_name.csv.gz"),
