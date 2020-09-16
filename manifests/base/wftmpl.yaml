@@ -38,7 +38,7 @@ spec:
             memory: 100Mi
         volumeMounts:
           - name: config
-            mountPath: /etc/solgate.ini
+            mountPath: /etc/solgate
           - name: workdir
             mountPath: /mnt/vol
       volumes:
@@ -61,7 +61,7 @@ spec:
             memory: 100Mi
         volumeMounts:
           - name: config
-            mountPath: /etc/solgate.ini
+            mountPath: /etc/solgate
       volumes:
         - name: config
           secret:
@@ -86,7 +86,7 @@ spec:
             value: ""
         volumeMounts:
           - name: config
-            mountPath: /etc/solgate.ini
+            mountPath: /etc/solgate
       volumes:
         - name: config
           secret:

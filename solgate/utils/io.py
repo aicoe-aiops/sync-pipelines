@@ -9,7 +9,7 @@ from functools import lru_cache
 from string import Formatter
 from typing import Any, Dict, Iterator, Tuple, Union
 
-DEFAULT_CONFIG_LOCATION = "/etc/solgate.ini"
+DEFAULT_CONFIG_LOCATION = "/etc/solgate/config.ini"
 
 
 class CustomEncoder(json.JSONEncoder):
