@@ -40,7 +40,7 @@ class S3FileSystem:
 
         """
         self.name = name
-        self.is_source = name.lower().startswith("source_")
+        self.is_source = name.lower().startswith("source")
         self.endpoint_url = endpoint_url
         if not self.endpoint_url:
             self.endpoint_url = DEFAULT_ENDPOINTS["source"] if self.is_source else DEFAULT_ENDPOINTS["destination"]

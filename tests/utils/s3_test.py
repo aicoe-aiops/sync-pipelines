@@ -13,6 +13,7 @@ from solgate.utils import s3
     "name,default_endpoints_key,endpoint_url",
     [
         ("source_x", "source", None),
+        ("source", "source", None),
         ("anything_else", "destination", None),
         ("source_y", None, "https://s3.example.com"),
     ],
@@ -45,7 +46,7 @@ def test_s3_file_system_from_config_file_multiple_sources(fixture_dir):
 def test_s3_file_system_from_config_file_order(mocked_s3):
     """Should order clients."""
     assert [str(i) for i in mocked_s3] == [
-        "source_test",
+        "source",
         "destination_unpack_historic",
         "destination_unpack_latest",
         "destination_raw",
