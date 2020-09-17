@@ -14,6 +14,7 @@ setup(
     version=_version,
     description="A CLI tool for S3 data synchronizations.",
     long_description=Path("README.md").read_text(),
+    long_description_content_type="text/markdown",
     author="Tom Coufal",
     author_email="tcoufal@redhat.com",
     maintainer="Tom Coufal",
