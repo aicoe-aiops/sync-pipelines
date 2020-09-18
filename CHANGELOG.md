@@ -54,3 +54,9 @@
 * :pushpin: Automatic update of dependency s3fs from 0.4.2 to 0.5.1 (#24)
 * :pushpin: Automatic update of dependency pytest-cov from 2.10.0 to 2.10.1
 * :pushpin: Automatic update of dependency jinja2 from 2.11.2 to 3.0.0a1
+
+## Release 3.0.1 (2020-09-18T05:13:35)
+### Features
+* :books: set description content type in setup.py
+### Non-functional
+* :ship: enable py3.8 based pull request check
