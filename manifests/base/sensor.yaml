@@ -49,6 +49,14 @@ spec:
                           templateRef:
                             name: solgate
                             template: exit-handler
+                volumeClaimTemplates:
+                  - metadata:
+                      name: workdir
+                    spec:
+                      accessModes: ["ReadWriteOnce"]
+                      resources:
+                        requests:
+                          storage: 1Gi
 
       parameters:
         - dest: k8s.source.resource.metadata.generateName
