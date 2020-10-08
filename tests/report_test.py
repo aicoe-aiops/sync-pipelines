@@ -95,10 +95,25 @@ def test_send_report_with_failures(context, empty_config, smtp):
         "phase": "Failed",
         "finishedAt": "2020-01-01 10:00:00 +0000 UTC",
     }
-    context["failures"] = dumps([failure])
+    context["failures"] = f'"{dumps([failure])}"'
     report.send_report(**context)
 
     for p in smtp.get_sent_message().iter_parts():
         content = p.get_content()
         assert "Failures:" in content
         assert all([v in content for v in failure.values()])
+
+
+@pytest.mark.parametrize(
+    "input,output", [('"[]"', []), ('"[{}]"', [dict()]), ('"[{"key":"value"}]"', [dict(key="value")]), ("[]", [])],
+)
+def test_decode_failures(input, output):
+    """Should decode escaped serialized json."""
+    assert report.decode_failures(input) == output
+
+
+@pytest.mark.parametrize("input", [None, "", '""', '"[', '"\\"this is a string\\""', '"2"'])
+def test_decode_failures_negative(input):
+    """Should raise ValueError when unable to decode serialized json to list of failures."""
+    with pytest.raises(ValueError):
+        report.decode_failures(input)
