@@ -7,7 +7,7 @@ from solgate.utils import S3File
 
 
 @pytest.mark.parametrize(
-    "file_list", ([dict(key="a/b/file.csv")], [dict(key="a/b/file1.csv"), dict(key="a/b/file2.csv")])
+    "file_list", ([dict(relpath="a/b/file.csv")], [dict(relpath="a/b/file1.csv"), dict(relpath="a/b/file2.csv")])
 )
 def test_send(mocker, file_list, mocked_solgate_s3_file_system):
     """Should request files to be sent to clients."""
@@ -16,7 +16,7 @@ def test_send(mocker, file_list, mocked_solgate_s3_file_system):
     transfer.send(file_list)
 
     for f in file_list:
-        mocked_transfer_single_file.assert_any_call(f["key"], [mocked_solgate_s3_file_system])
+        mocked_transfer_single_file.assert_any_call(f["relpath"], [mocked_solgate_s3_file_system])
 
 
 @pytest.mark.parametrize("file_list", ([], [dict()], [dict(not_a_key="a/b/file.csv")], [dict(key="file.csv"), dict()]))

@@ -51,15 +51,15 @@ def test_list_negative(run, mocker):
 @pytest.mark.parametrize(
     "cli_args,func_args",
     [
-        (["send", "key"], [[dict(key="key")], None]),
-        (["send", "-l", "."], [[dict(key="file/key")], None]),
-        (["-c", ".", "send", "key"], [[dict(key="key")], "."]),
+        (["send", "key"], [[dict(relpath="key")], None]),
+        (["send", "-l", "."], [[dict(relpath="file/key")], None]),
+        (["-c", ".", "send", "key"], [[dict(relpath="key")], "."]),
     ],
 )
 def test_send(run, mocker, cli_args, func_args):
     """Should call proper functions on sync command."""
     mocked_send = mocker.patch("solgate.cli.send")
-    mocker.patch("solgate.cli.deserialize", return_value=[dict(key="file/key")])
+    mocker.patch("solgate.cli.deserialize", return_value=[dict(relpath="file/key")])
 
     result = run(cli_args)
 
