@@ -6,6 +6,7 @@ release:
   - upload-pypi-sesheta
 build:
   base-image: registry.access.redhat.com/ubi8/python-38:latest
+  custom-tag: latest
   registry: quay.io
   registry-org: thoth-station
   registry-project: solgate
