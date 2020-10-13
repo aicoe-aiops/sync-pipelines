@@ -13,22 +13,15 @@ spec:
 
     - name: exit-handler
       steps:
-        - - name: notify
-            template: notify
+        - - name: failure-handler
+            template: failure-handler
             when: "{{workflow.status}} != Succeeded"
 
     - name: lookup
-      outputs:
-        parameters:
-          - name: objects-to-transfer
-            valueFrom:
-              path: /mnt/vol/filelist.json
       container:
         image: solgate:latest
         command: ["solgate", "list"]
-        args:
-          - -o
-          - /mnt/vol/filelist.json
+        args: ["-o", "/mnt/vol/filelist.json"]
         resources:
           limits:
             cpu: 500m
@@ -45,13 +38,12 @@ spec:
         - name: config
           secret:
             secretName: "{{workflow.parameters.config}}"
-        - name: workdir
-          emptyDir: {}
 
     - name: sync
       container:
         image: solgate:latest
-        command: ["solgate", "transfer"]
+        command: ["solgate", "send"]
+        args: ["-l", "/mnt/vol/filelist.json"]
         resources:
           limits:
             cpu: 500m
@@ -62,12 +54,42 @@ spec:
         volumeMounts:
           - name: config
             mountPath: /etc/solgate
+          - name: workdir
+            mountPath: /mnt/vol
       volumes:
         - name: config
           secret:
             secretName: "{{workflow.parameters.config}}"
 
+    - name: failure-handler
+      steps:
+        - - name: get-host
+            template: get-host
+        - - name: notify
+            template: notify
+            arguments:
+              parameters:
+                - name: argo-ui-host
+                  value: "{{steps.get-host.outputs.parameters.host}}"
+
+    - name: get-host
+      outputs:
+        parameters:
+          - name: host
+            valueFrom:
+              jsonPath: "{.spec.host}"
+      resource:
+        action: get
+        manifest: |
+          apiVersion: route.openshift.io/v1
+          kind: Route
+          metadata:
+            name: argo-server
+
     - name: notify
+      inputs:
+        parameters:
+          - name: argo-ui-host
       container:
         image: solgate:latest
         command: ["solgate", "report"]
@@ -83,7 +105,8 @@ spec:
           - name: WORKFLOW_TIMESTAMP
             value: "{{workflow.creationTimestamp}}"
           - name: ARGO_UI_HOST
-            value: ""
+            value: "{{inputs.parameters.argo-ui-host}}"
+
         volumeMounts:
           - name: config
             mountPath: /etc/solgate
