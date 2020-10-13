@@ -60,3 +60,15 @@
 * :books: set description content type in setup.py
 ### Non-functional
 * :ship: enable py3.8 based pull request check
+
+## Release 3.1.0 (2020-10-13T12:07:18)
+### Features
+* Use PV for data exchange and fetch argo server role on the fly
+* Fix transfer logic - look for 'relpath' key instead of 'key'
+* Use custom 'latest' tag as an additional push target
+* Fix deserialization of Argo failures
+### Automatic Updates
+* :pushpin: Automatic update of dependency pytest from 6.0.2 to 6.1.1 (#46)
+* :pushpin: Automatic update of dependency pytest from 6.0.2 to 6.1.1 (#45)
+* :pushpin: Automatic update of dependency mypy from 0.782 to 0.790 (#44)
+* :pushpin: Automatic update of dependency mypy from 0.782 to 0.790 (#43)
