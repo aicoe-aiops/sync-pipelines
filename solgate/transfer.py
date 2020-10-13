@@ -141,7 +141,7 @@ def send(files_to_transfer: List[Dict[str, Any]], config_file: str = None) -> bo
     failed = []
     for source_file in files_to_transfer:
         try:
-            if not _transfer_single_file(source_file["key"], clients):
+            if not _transfer_single_file(source_file["relpath"], clients):
                 failed.append(source_file)
         except KeyError:
             logger.error("Unable to parse file key", dict(file=source_file), exc_info=True)

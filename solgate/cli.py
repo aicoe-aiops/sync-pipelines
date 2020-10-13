@@ -47,7 +47,7 @@ def _send(ctx, key: str = None, listing_file: str = None):
     if listing_file:
         files_to_transfer = deserialize(listing_file)
     elif key:
-        files_to_transfer = [dict(key=key)]
+        files_to_transfer = [dict(relpath=key)]
     else:
         logger.error("Nothing to send through solgate.")
         exit(1)
