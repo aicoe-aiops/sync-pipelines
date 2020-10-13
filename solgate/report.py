@@ -3,7 +3,7 @@
 import smtplib
 from email.message import EmailMessage
 from json import loads
-from typing import Dict, Union
+from typing import Dict, Union, Any
 from pathlib import Path
 
 from jinja2 import Template
@@ -18,7 +18,7 @@ DEFAULT_RECIPIENT = "data-hub-alerts@redhat.com"
 DEFAULT_SMTP_SERVER = "smtp.corp.redhat.com"
 
 
-def render_from_template(template_filename: Union[str, Path], context: Dict[str, str]) -> str:
+def render_from_template(template_filename: Union[str, Path], context: Dict[str, Any]) -> str:
     """Render email content via a template.
 
     Args:
@@ -33,6 +33,39 @@ def render_from_template(template_filename: Union[str, Path], context: Dict[str,
         template = Template(f.read())
 
     return template.render(**context)
+
+
+def decode_failures(failures: str) -> list:
+    """Deserialize failed nodes list from Argo.
+
+    Argo passess the WORKFLOW_FAILURES as a JSON list serialized into a escaped string. Unfortunately when this list
+    is stored in an environment variable it gets escaped twice (the string starts with a " and all quote chars are
+    escaped as well...). This decoder solves that by encoding the string back to bytes and then decoding it as an
+    `unicode_escape`d string.
+
+    Args:
+        failures(str): JSON string representing failed workflow steps
+
+    Raises:
+        ValueError: When unable to parse value
+
+    Returns:
+        list: Deserialized failures
+
+    """
+    try:
+        failures = failures.encode().decode("unicode_escape")
+        # Argo passes failures as a quoted string '"[...]"', we need to strip them first (first and last letter)
+        failures = failures[1:-1] if failures.startswith('"') else failures
+        failures_deserialized = loads(failures)
+
+        if not isinstance(failures_deserialized, list):
+            raise TypeError("Not a list")
+
+        return failures_deserialized
+
+    except (AttributeError, ValueError, TypeError) as e:
+        raise ValueError(e)
 
 
 def send_report(
@@ -53,18 +86,17 @@ def send_report(
 
     """
     config = read_general_config(config_file)
-    # Deserialize 'failures' JSON string
-    try:
-        failures_deserialized = loads(failures)
-    except (ValueError, TypeError):
-        failures_deserialized = []
 
-    context = dict(name=name, namespace=namespace, status=status, timestamp=timestamp, host=host)
+    context: Dict[str, Any] = dict(name=name, namespace=namespace, status=status, timestamp=timestamp, host=host)
     if not all(context.values()):
         logger.error("Alert content is not passed properly")
         exit(1)
 
-    context["failures"] = failures_deserialized
+    try:
+        context["failures"] = decode_failures(failures)
+    except ValueError:
+        logger.error("Unable to parse workflow failures", exc_info=True)
+        context["failures"] = []
 
     logger.info("Sending email alert")
 
