@@ -84,15 +84,55 @@ solgate list
 solgate transfer
 ```
 
-### Nofitication service
+### Notification service
+
+Send an workflow status alert via email from Argo environment.
+
+Command expects to be passed values matching available Argo variable format as described [here](https://github.com/argoproj/argo/blob/master/docs/variables.md#global).
 
 ```sh
-solgate notify
+solgate report
 ```
+
+Options can be set either via CLI argument or via environment variable:
+
+<!-- Img tag enforces additional width on the column, so GitHub doesn't break line on the --option after dashes.  -->
+<!-- markdownlint-capture -->
+<!-- markdownlint-disable  no-inline-html -->
+
+- Options which map to Argo Workflow variables:
+
+  | CLI option <img width=150/> | Environment variable name | Value should map to Argo workflow variable | Description                                                         |
+  | --------------------------- | ------------------------- | ------------------------------------------ | ------------------------------------------------------------------- |
+  | `--failures`                | `WORKFLOW_FAILURES`       | `{{workflow.failures}}`                    | JSON serialized into a string listing all the failed workflow nodes |
+  | `-n`, `--name`              | `WORKFLOW_NAME`           | `{{workflow.name}}`                        | Workflow instance name.                                             |
+  | `--namespace`               | `WORKFLOW_NAMESPACE`      | `{{workflow.namespace}}`                   | Project namespace where the workflow was executed.                  |
+  | `-s`, `--status`            | `WORKFLOW_STATUS`         | `{{workflow.status}}`                      | Current status of the workflow execution.                           |
+  | `-t`, `--timestamp`         | `WORKFLOW_TIMESTAMP`      | `{{workflow.creationTimestamp}}`           | Workflow execution timestamp.                                       |
+
+- Options which map to config file entries. Priority order:
+
+  ```sh
+  CLI option > Environment variable > Config file entry > Default value
+  ```
+
+  | CLI option <img width=20/> | Environment variable name | Config file entry in `[solgate]` section | Description                                                            |
+  | -------------------------- | ------------------------- | ---------------------------------------- | ---------------------------------------------------------------------- |
+  | `--from`                   | `ALERT_SENDER`            | `alerts_from`                            | Email alert sender address. Defaults to solgate-alerts@redhat.com.     |
+  | `--to`                     | `ALERT_RECIPIENT`         | `alerts_to`                              | Email alert recipient address. Defaults to data-hub-alerts@redhat.com. |
+  | `--smtp`                   | `SMTP_SERVER`             | `alerts_smtp_server`                     | SMTP server URL. Defaults to smtp.corp.redhat.com.                     |
+
+- Other:
+
+  | CLI option | Environment variable name | Description                       |
+  | ---------- | ------------------------- | --------------------------------- |
+  | `--host`   | `ARGO_UI_HOST`            | Argo UI external facing hostname. |
+
+<!-- markdownlint-restore -->
 
 ## Workflow manifests
 
-Additionally to the `solgate` package source code this repository also features deployment manifests in the `manifests` folder. The current implementation of Kubernetes manifests relies on [Argo](https://argoproj.github.io/argo/), [Argo Events](https://argoproj.github.io/argo-events/) and are structured in a [Kustomize](https://kustomize.io/) format. Environments for deployment are specified in the `manifests/overlays/ENV_NAME` folder.
+Additionally to the `solgate` package this repository also features deployment manifests in the `manifests` folder. The current implementation of Kubernetes manifests relies on [Argo](https://argoproj.github.io/argo/), [Argo Events](https://argoproj.github.io/argo-events/) and are structured in a [Kustomize](https://kustomize.io/) format. Environments for deployment are specified in the `manifests/overlays/ENV_NAME` folder.
 
 Each environment features multiple solgate workflow instances. Configuration `config.ini` file and selected triggers are defined in instance subfolder within the particular environment folder.
 

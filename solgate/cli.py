@@ -104,10 +104,7 @@ def _list(ctx, output: str = None):
 )
 @click.option("-t", "--timestamp", envvar="WORKFLOW_TIMESTAMP", type=click.STRING, help="Workflow execution timestamp.")
 @click.option(
-    "--host",
-    envvar="ARGO_UI_HOST",
-    type=click.STRING,
-    help="Argo UI external facing route host, which can be used to format hyperlinks to given workflow execution.",
+    "--host", envvar="ARGO_UI_HOST", type=click.STRING, help="Argo UI external facing hostname.",
 )
 @click.option(
     "--from",
