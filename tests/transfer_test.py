@@ -39,8 +39,8 @@ def test_send_unable_to_transfer(mocker, mocked_solgate_s3_file_system):
     mocker.patch("solgate.transfer._transfer_single_file", return_value=False)
 
     spy_send = mocker.spy(transfer.logger, "error")
-    assert transfer.send([dict(key="a/b/file.csv")]) is False
-    spy_send.assert_called_with(mocker.ANY, dict(failed_files=[dict(key="a/b/file.csv")]))
+    assert transfer.send([dict(relpath="a/b/file.csv")]) is False
+    spy_send.assert_called_with(mocker.ANY, dict(failed_files=[dict(relpath="a/b/file.csv")]))
 
 
 @pytest.mark.parametrize("mocked_s3", ["sample_config.ini"], indirect=["mocked_s3"])
