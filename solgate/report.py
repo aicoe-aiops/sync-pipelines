@@ -8,7 +8,7 @@ from pathlib import Path
 
 from jinja2 import Template
 
-from .utils import logger, read_general_config
+from .utils import logger
 
 TEMPLATE_HTML = Path(__file__).absolute().parent / "utils" / "email_alert_template.html"
 TEMPLATE_PLAINTEXT = Path(__file__).absolute().parent / "utils" / "email_alert_template.txt"
@@ -68,9 +68,7 @@ def decode_failures(failures: str) -> list:
         raise ValueError(e)
 
 
-def send_report(
-    name: str, namespace: str, status: str, host: str, timestamp: str, failures: str, config_file: str = None
-) -> None:
+def send_report(context: Dict[str, Any], failures: str, config: Dict[str, str]) -> None:
     """Send an email notification.
 
     Args:
@@ -85,10 +83,8 @@ def send_report(
         config_file (str, optional): Path to configuration file.
 
     """
-    config = read_general_config(config_file)
-
-    context: Dict[str, Any] = dict(name=name, namespace=namespace, status=status, timestamp=timestamp, host=host)
-    if not all(context.values()):
+    context = context.copy()
+    if not context.keys() == set(["name", "namespace", "status", "timestamp", "host"]) or not all(context.values()):
         logger.error("Alert content is not passed properly")
         exit(1)
 
@@ -101,7 +97,7 @@ def send_report(
     logger.info("Sending email alert")
 
     msg = EmailMessage()
-    msg["Subject"] = f"[{namespace}][{name}] Argo workflow failed"
+    msg["Subject"] = f"[{context.get('namespace')}][{context.get('name')}] Argo workflow failed"
     msg["From"] = config.get("alerts_from", DEFAULT_SENDER)
     msg["To"] = config.get("alerts_to", DEFAULT_RECIPIENT)
 

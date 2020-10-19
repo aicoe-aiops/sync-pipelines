@@ -5,7 +5,8 @@
 import click
 
 from solgate import list_source, send, send_report, __version__ as version
-from .utils import serialize, logger, deserialize
+from .utils import serialize, logger, deserialize, read_general_config
+from .report import DEFAULT_RECIPIENT, DEFAULT_SENDER, DEFAULT_SMTP_SERVER
 
 
 @click.group()
@@ -108,16 +109,66 @@ def _list(ctx, output: str = None):
     type=click.STRING,
     help="Argo UI external facing route host, which can be used to format hyperlinks to given workflow execution.",
 )
+@click.option(
+    "--from",
+    "from_",
+    help=(
+        "Email alert sender address. Precedes value in config file. "
+        f"If not set in either of the places, defaults to {DEFAULT_SENDER}."
+    ),
+    type=click.STRING,
+    envvar="ALERT_SENDER",
+)
+@click.option(
+    "--to",
+    help=(
+        "Email alert recipient address. Precedes value in config file. "
+        f"If not set in either of the places, defaults to {DEFAULT_RECIPIENT}."
+    ),
+    type=click.STRING,
+    envvar="ALERT_RECIPIENT",
+)
+@click.option(
+    "--smtp",
+    help=(
+        "SMTP server URL. Precedes value in config file. "
+        f"If not set in either of the places, defaults to {DEFAULT_SMTP_SERVER}."
+    ),
+    type=click.STRING,
+    envvar="SMTP_SERVER",
+)
 @click.pass_context
 def _report(
-    ctx, failures: str, name: str, namespace: str, status: str, timestamp: str, host: str,
+    ctx,
+    failures: str,
+    name: str,
+    namespace: str,
+    status: str,
+    timestamp: str,
+    host: str,
+    from_: str,
+    to: str,
+    smtp: str,
 ):
     """Send an workflow status alert from Argo environment via email.
 
     Command expects to be passed values matching available Argo variables as described here
     https://github.com/argoproj/argo/blob/master/docs/variables.md#global
     """
-    send_report(name, namespace, status, host, timestamp, failures, ctx.obj["CONFIG_PATH"])
+    try:
+        config = read_general_config(ctx.obj["CONFIG_PATH"])
+    except IOError:
+        logger.warn("Config file is not present or not valid, alerting to/from default email address.")
+        config = {}
+
+    params = dict(alerts_from=from_, alerts_to=to, alerts_smtp_server=smtp)
+    # Ensure we don't overwrite config value with None
+    params = {k: v for k, v in params.items() if v}
+    config.update(params)
+
+    context = dict(name=name, namespace=namespace, status=status, timestamp=timestamp, host=host)
+
+    send_report(context, failures, config)
 
 
 @cli.command("version")

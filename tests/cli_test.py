@@ -3,7 +3,7 @@
 from click.testing import CliRunner
 import pytest
 
-from solgate.cli import cli
+from solgate.cli import cli, logger
 
 
 @pytest.fixture
@@ -84,32 +84,41 @@ def test_send_negative(run, mocker, kwargs, cli_args):
     assert result.exit_code == 1
 
 
+context_keys = ["name", "namespace", "status", "host", "timestamp"]
+
+
 @pytest.mark.parametrize(
     "cli_args,func_args,env",
     [
-        (["report"], [None, None, None, None, None, "", None], dict()),
+        (["report"], [[None, None, None, None, None], "", {}], dict()),
         (
+            (
+                "report "
+                "-n name --failures failures --namespace namespace -s status --host host -t timestamp "
+                "--from nobody@example.com --to somebody@example.com --smtp smtp.example.com"
+            ).split(),
             [
-                "report",
-                "-n",
-                "name",
-                "--failures",
+                context_keys,
                 "failures",
-                "--namespace",
-                "namespace",
-                "-s",
-                "status",
-                "--host",
-                "host",
-                "-t",
-                "timestamp",
+                dict(
+                    alerts_from="nobody@example.com",
+                    alerts_to="somebody@example.com",
+                    alerts_smtp_server="smtp.example.com",
+                ),
             ],
-            ["name", "namespace", "status", "host", "timestamp", "failures", None],
             dict(),
         ),
         (
             ["report"],
-            ["name", "namespace", "status", "host", "timestamp", "failures", None],
+            [
+                context_keys,
+                "failures",
+                dict(
+                    alerts_from="nobody@example.com",
+                    alerts_to="somebody@example.com",
+                    alerts_smtp_server="smtp.example.com",
+                ),
+            ],
             dict(
                 WORKFLOW_NAME="name",
                 WORKFLOW_FAILURES="failures",
@@ -117,14 +126,43 @@ def test_send_negative(run, mocker, kwargs, cli_args):
                 WORKFLOW_STATUS="status",
                 ARGO_UI_HOST="host",
                 WORKFLOW_TIMESTAMP="timestamp",
+                ALERT_SENDER="nobody@example.com",
+                ALERT_RECIPIENT="somebody@example.com",
+                SMTP_SERVER="smtp.example.com",
             ),
         ),
-        (["-c", ".", "report"], [None, None, None, None, None, "", "."], dict()),
+        (
+            ["-c", "general_section_only.ini", "report"],
+            [
+                [None, None, None, None, None],
+                "",
+                dict(
+                    alerts_from="solgate@example.com",
+                    alerts_to="sre@example.com",
+                    alerts_smtp_server="smtp.example.com",
+                ),
+            ],
+            dict(),
+        ),
     ],
 )
-def test_report(run, mocker, cli_args, func_args, env):
+def test_report(run, mocker, cli_args, func_args, fixture_dir, env):
     """Should call send_report on report reprot command."""
     mocked_report = mocker.patch("solgate.cli.send_report")
 
+    logger_spy = None
+    if cli_args[0] == "-c":
+        cli_args[1] = fixture_dir / cli_args[1]
+    else:
+        # If config wasn't specified, spy for a warning
+        logger_spy = mocker.spy(logger, "warn")
+
     run(cli_args, env)
+
+    func_args[0] = {k: v for k, v in zip(context_keys, func_args[0])}
     mocked_report.assert_called_once_with(*func_args)
+
+    if logger_spy:
+        logger_spy.assert_called_once_with(
+            "Config file is not present or not valid, alerting to/from default email address."
+        )
