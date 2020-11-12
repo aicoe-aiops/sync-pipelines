@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: dev-instance
+stringData:
+    source.creds.yaml: ENC[AES256_GCM,data:8LNogDuVl3Tw3qfv5GGsnmSpOUkYFmcrOR7vBIfJMaLNnvBxJixyz+MC96bQEdD/eMKhqhtThp8tFZDkXbskwdXRs9E6/pLXLCsY5aQosUwLxIR+bNzeqw0cWEjLQaJbN2jkYk3u3yc=,iv:4XbgyYz2cWenXG5YaJtZ2w+jTGm7eBIihSbdjtpa9ww=,tag:RaAxVsJKfdCMz/DVA03iiA==,type:str]
+    destination.creds.yaml: ENC[AES256_GCM,data:MOgPyxqDmTD5OdZeS5tEbb8NS3t9194L/obMjl0aY/Q+IRKc3JWlFHxHhpWK81a1Usa03FiDvuWuir7cReP26F/SaPVvXg88n6Ep6l3A5xLuVlW8gWcfi9evFX5M9PdXzXak02JjCkU=,iv:WaOOAnb7xdPIIis/XBlDq3Im47oQMKcOxvQjgrtaBos=,tag:cpuTGDst1TjWzwgw+XeoWg==,type:str]
+    config.yaml: |
+        alerts_smtp_server: smtp.corp.redhat.com
+        alerts_from: solgate-alerts@redhat.com
+        alerts_to: dev-null@redhat.com
+
+        source:
+          endpoint_url: https://s3.upshift.redhat.com
+          formatter: "{date}/{collection}.{ext}"
+          base_path: DH-PLAYPEN/storage/input
+
+        destinations:
+          - endpoint_url: https://s3.upshift.redhat.com
+            formatter: "{collection}/historic/{date}-{collection}.{ext}"
+            base_path: DH-PLAYPEN/storage/output
+            unpack: yes
+
+          - endpoint_url: https://s3.upshift.redhat.com
+            formatter: "{collection}/latest/full_data.csv"
+            base_path: DH-PLAYPEN/storage/output
+            unpack: yes
+
+          - endpoint_url: https://s3.upshift.redhat.com
+            base_path: DH-PLAYPEN/storage/output
+sops:
+    kms: []
+    gcp_kms: []
+    azure_kv: []
+    hc_vault: []
+    lastmodified: '2020-11-12T16:47:48Z'
+    mac: ENC[AES256_GCM,data:ZtXEoJ1mY3eIoT9NJfde5zhDgBE0zZCmkBOWvJlc5oD0vd0kj6pNHx001VfsYQOShAUOrRfNkGiHfiHsrfJMvb00JrFJbd1udBPstuNRMJrYQ0y66J1302mDPfj8Sylvh5Qd02GKHyYr0I9QN6FpNHE/TP/suLBBFhfI/x5Keog=,iv:qFWBNOfs5iZv+swCYXMD+I6MdJKXNhKMIU0nj0WYv38=,tag:23N+7V4PBpZBvojuce24nQ==,type:str]
+    pgp:
+    -   created_at: '2020-11-12T16:43:28Z'
+        enc: |
+            -----BEGIN PGP MESSAGE-----
+
+            hQEMA/irrHa183bxAQf/ZK9WfOXxWPdTIafyV9bOcG+ej+MXBgcD+Kxadodvix8Q
+            wxbUhsOzYTBZy3uNRcqqz6G2ydxE4khLMxLb/Z78syQ/Wb9rzqxDzV7Ry/krNmkJ
+            BQ49qB34ncGjKIgV8pzkygtqqW7xQnt5C/gt3AUS+rd0+r2nIv14MKIN/+PYSuV7
+            ovwyI83XuoS5Eduf9UgG8HcVIQZahpfsRINosO7zHmtqWuhPuMxzSD8KbCk/c0CC
+            cliwQOp98nvKZ8QefQ+vkWqA5Bn/WaJ1YqhRK7RVM3104vS6uswA9ZVUz8q5ucY6
+            NoWaRnQuKyaVOPsMOm0SsMb26640PFEQoW/IH3Uj2NJcAaPOfZGJn7eHXP08cMfn
+            Fr5EuthLArQlYlUSAy6TklvASfK6T044bAXnpx7CeY7EPoZt2v4M1EaUp66S4KYx
+            S4WPL7Tq3a3TtsLHsvNsOVXL2SO3vVr6GpQ/UjU=
+            =3Rqs
+            -----END PGP MESSAGE-----
+        fp: EFDB9AFBD18936D9AB6B2EECBD2C73FF891FBC7E
+    -   created_at: '2020-11-12T16:43:28Z'
+        enc: |
+            -----BEGIN PGP MESSAGE-----
+
+            hQIMA5MpUvZdp4z9AQ//bozgRFuhDVWRKKzJntYklASZySAh2nW0+pCTPS4Isj96
+            I4DjlQC05uD+RCPa3U5BK1XcdgcF8LkjlJOvJRi9GdmgkbFF2EnxcurbFtFvpQ8N
+            n7VqtqgyAyMN2XVgKH6CjgOszuDzNV471dDuVjyMtzMQKHAp/tN4ocHD+v6SAHID
+            KGubmSC/7kR6y9zi+9JS+/y4+ZsyJZW8AXBIc8/xOjkEaQXC9GqXc+DyyH7C7shf
+            LxmN5fHh4joOW0nvqPbITLzNSjsx+nI28m5VpJnwNtoLZgrU8VwMp4/o+J7b6uy7
+            tBvGsu+EkIz3XGTCJoZZRvgixUoIA/haa92NbGlR2suXxAgKGgw02eKMJWYU3T6m
+            x+V8/kUGvIfwJsJsWeLK02Fm6mD0imAMpTMGRtZF/27J9vPrxLjNBmXyFq2NiUcL
+            wWhNdQWgvnsuQUHhI48IUXHlkIopQKo6rCf8gFYoScoFkpVxbLQLCfC4jmxrkC6K
+            9xjnNObHAGdrs6SeHcwnh7l8j6XxKOKxohymLiu3vyND8UifQ4X6qhIT48o27Es3
+            H2MQGmnjMNjc3aiRqVFInYhKbD6hrdYZ49G93ofTmYlwfRAozJNQm6HUDipmhRLJ
+            fb4vemQ6NYajEgwEZ41htlNVA7WEzXvV+Z+ztBv5CivL8TUTNeOm65OT4dF81nPS
+            XAEPAUUFiJMzsy4PA5/Irg4TUPmKfwveZrZL+BZFXIErRhJG35LmjIb/f5fcDCrz
+            Rm4kb3uLii2La8UF5vqc2obfP4JjWHSyWb6IjRzAwQzVrICpI+v+HNBRqJNU
+            =4eAF
+            -----END PGP MESSAGE-----
+        fp: A76372D361282028A99F9A47590B857E0288997C
+    -   created_at: '2020-11-12T16:43:28Z'
+        enc: |-
+            -----BEGIN PGP MESSAGE-----
+
+            wcFMA9AgVmznaOk7ARAAZjMqs02x2urVY19/0C2Cqz5HuaTGqs6SeWg8r3z5qD4C
+            hAKB6cdOhDj6j6xu1i32Fl8qkqiXJRZTZi9LG3yCTq9fbf/h0t4B5eOI24VwLjo4
+            /BlkjDJVbJtG5KbWXDCobeGF/GZekrMS8QJ0/WyAejkqylx85ukbPs5Dxm6lzDW3
+            OruD1I1vx056aVCHxfZmvHh57G04NuFxPe85y3RhFvSHYDjH4qPSu/8BZA6RJ1ow
+            JLShwxuKf325qeZOZ/bGlRuoCEw+SIWGuNehxW37vy/yCQuPicUghKfjGHP9dUYm
+            eaP2eVjqbWSOr9aJfWUcLGxhbwpk5GYDSKId0DlfOxuBNIYqYlwWWX8mda6HS7KO
+            D3mBUbHCX+BiQTGlZQBQ9IqoVukZZ+pF5/4bkwKKaassEAagnZMTxP75ZgCrxJYO
+            hnxSMdWauwJP4e6BDzwled6n1v9tznxMBZhwMFUHaMS/Jh4LErgnwlYh02/OZRHX
+            xUBfANqfRqpfSvwyHP/8/KoNaDBzG2pUT7RLnBQSawmF78HxFrgiah8VbMGgd3R+
+            dOdknnPad8Qd8g64kS2o46V5HzLkTaGmp6VqmbeGyzX1rNn2GORJ5LYFrTn0hJ0b
+            vx1qlI6rgAan7zlCTUxB0Z6na6s9OQHPf6eUarmxm9xeKkncw0ACoYmapjfGGG3S
+            4AHkQ0YkTZd4OqzaBZuRo3hipOE3SeBo4GfhuDPgAOLasB0k4GvlbP+2NZwdghLn
+            Di5ixUYwI9Im4KzviDeqcIEoWqNUhxngouS/A+M5G/kqSCb+HfwHDEMj4p1Vbnjh
+            QEkA
+            =4R6C
+            -----END PGP MESSAGE-----
+        fp: 04DAFCD9470A962A2F272984E5EB0DA32F3372AC
+    encrypted_regex: ^(.*.creds.yaml.*)$
+    version: 3.6.1

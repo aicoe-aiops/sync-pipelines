@@ -12,52 +12,51 @@ pip install solgate
 
 ## Configuration
 
-Solgate relies on a configuration file that holds all the information required to fully perform the synchronization. This file is a standard INI/TOML file that contains following sections:
+Solgate relies on a configuration file that holds all the information required to fully perform the synchronization. This config file is expected to be of a YAML format and it should contain following keys:
 
-- Exactly one section starting with `source_`. This is a location specifying section where the data are sourced from.
-- Multiple (at least one) sections starting with `destination_`. These are also location specifying sections. Their purpose is to define sync destinations.
-- Section named `solgate` for a general configuration that is not specific to a single location.
+- `source` key. Value to this key specifies where the data are sourced from.
+- `destinations` key. It's value is expected to be an array for locations. Their purpose is to define sync destinations.
+- other top level keys for a general configuration that is not specific to a single location.
 
-### Section `solgate`
+### General config section
 
 All configuration in this section **is optional**. Use this section if you'd like to modify the default behavior. Default values are denoted below:
 
-```ini
-[solgate]
-alerts_smtp_server = smtp.corp.redhat.com
-alerts_from        = solgate-alerts@redhat.com
-alerts_to          = dev-null@redhat.com
-timedelta          = 1d
+```yaml
+alerts_smtp_server: smtp.corp.redhat.com
+alerts_from: solgate-alerts@redhat.com
+alerts_to: dev-null@redhat.com
+timedelta: 1d
 ```
 
 Description:
 
-- `alerts_smtp_server`, `alerts_from`, `alerts_to` are used for alerting only
+- `alerts_smtp_server`, `alerts_from`, `alerts_to` are used for email alerting only
 - `timedelta` defines a time window in which the objects in the source bucket must have been modified, to be eligible fo the bucket listing. Only files modified no later than `timedelta` from now are included.
 
-### Source section
+### Source key
 
-```ini
-[source_some_fancy_name]
-aws_access_key_id     = KEY_ID
-aws_secret_access_key = SECRET
-base_path             = DH-PLAYPEN/storage/input   ; at least the bucket name is required, sub path within this bucket is optional
-endpoint_url          = https://s3.amazonaws.com   ; optional, defaults to s3.amazonaws.com
-formatter             = {date}/{collection}.{ext}  ; optional, defaults to None
+```yaml
+source:
+  aws_access_key_id: KEY_ID
+  aws_secret_access_key: SECRET
+  base_path: DH-PLAYPEN/storage/input # at least the bucket name is required, sub path within this bucket is optional
+  endpoint_url: https://s3.amazonaws.com # optional, defaults to s3.amazonaws.com
+  formatter: "{date}/{collection}.{ext}" # optional, defaults to None
 ```
 
 If the `formatter` is not set, no repartitioning is expected to happen and the S3 object key is left intact, same as it is in the source bucket (within the `base_path` context). Specifying the `formatter` in the source section only, **doesn't** result in repartitioning of all object by itself, only those destinations that also have this option specified are eligible for object key modifications.
 
-### Destination sections
+### Destinations key
 
-```ini
-[destination_some_fancy_name]
-aws_access_key_id     = KEY_ID
-aws_secret_access_key = SECRET
-base_path             = DH-PLAYPEN/storage/output      ; at least the bucket name is required, sub path within this bucket is optional
-endpoint_url          = https://s3.upshift.redhat.com  ; optional, defaults to s3.upshift.redhat.com
-formatter             = {date}/{collection}.{ext}      ; optional, defaults to None
-unpack                = yes                            ; optional, defaults to False/no
+```yaml
+destinations:
+  - aws_access_key_id: KEY_ID
+    aws_secret_access_key: SECRET
+    base_path: DH-PLAYPEN/storage/output # at least the bucket name is required, sub path within this bucket is optional
+    endpoint_url: https://s3.upshift.redhat.com # optional, defaults to s3.upshift.redhat.com
+    formatter: "{date}/{collection}.{ext}" # optional, defaults to None
+    unpack: yes # optional, defaults to False/no
 ```
 
 The `endpoint_url` defaults to a different value for destination compared to source section. This is due to the usual data origin and safe destination host.
@@ -65,6 +64,62 @@ The `endpoint_url` defaults to a different value for destination compared to sou
 If the `formatter` is not set, no repartitioning is expected to happen and the S3 object key is left intact, same as it is in the source bucket (within the `base_path` context). If repartitioning is desired, the formatter string must be defined in the source section as well - otherwise object name can't be parsed properly from the source S3 object key.
 
 `unpack` option specifies if the gunzipped archives should be unpacked during the transfer. The `.gz` suffix is automatically dropped from the resulting object key, no matter if the repartitioning is on or off. Switching this option on results in weaker object validation, since the implicit metadata checksum and size checks can't be used to verify the file integrity.
+
+### Separate credentials into different files
+
+In case you don't feel like inlining `aws_access_key_id`, `aws_secret_access_key` in plaintext into the config file is a good idea, you can separate these credentials into their distict files. If the credentials keys are not found (inlined) in the config, solgate tries to locate them in the config folder (the same folder as the main config file is located).
+
+The credentials file is expected to contain following:
+
+```yaml
+aws_access_key_id: KEY_ID
+aws_secret_access_key: SECRET
+```
+
+For source the expected filename is `source.creds.yaml`, for destinations `destination.X.creds.yaml` where `X` is the index in the `destinations` list in the main config file. For destinations we allow credentials sharing, therefore if `destination.X.creds.yaml` is not located, solgate tries to load `destination.creds.yaml` (not indexed).
+
+#### Full example
+
+Let's have this file structure in our `/etc/solgate`:
+
+```sh
+$ tree /etc/solgate
+/etc/solgate
+├── config.yaml
+├── destination.0.creds.yaml
+├── destination.creds.yaml
+└── source.creds.yaml
+```
+
+And a main config file `/etc/solgate/config.yaml` looking like this:
+
+```yaml
+source:
+  base_path: DH-PLAYPEN/storage/input
+
+destinations:
+  - base_path: DH-PLAYPEN/storage/output0 # idx=0
+
+  - base_path: DH-PLAYPEN/storage/output1 # idx=1
+
+  - base_path: DH-PLAYPEN/storage/output2 # idx=2
+    aws_access_key_id: KEY_ID
+    aws_secret_access_key: SECRET
+```
+
+Solgate will use these credentials:
+
+- For source the `source.creds.yaml` is read, because no credentials are inlined
+- For destination `idx=0` the `destination.0.creds.yaml` is used, because no credentials are inlined
+- For destination `idx=1` the `destination.creds.yaml` is used, because no credentials are inlined and there's no `destination.1.creds.yaml` file
+- For destination `idx=2` the inlined credentials are used
+
+The resolution priority:
+
+| type        | priority                                                          |
+| ----------- | ----------------------------------------------------------------- |
+| source      | `inlined > source.creds.yaml`                                     |
+| destination | `inlined > destination.INDEX.creds.yaml > destination.creds.yaml` |
 
 ## Usage
 
@@ -144,9 +199,7 @@ Local prerequisites:
 
 - [Kustomize](https://kustomize.io/)
 - [sops](https://github.com/mozilla/sops)
-- [kustomize-sopssecretgenerator](https://github.com/goabout/kustomize-sopssecretgenerator)
-
-Note: Yes, we don't use [ksops] here, instead we are currently using a different sops abstraction. It is because we would like to track as much of the configuration files is a readable format (and generate the secrets from them on the fly), opposed to ksops, which requires Kubernetes secret resources which are base64 encoded (harder to review).
+- [ksops](https://github.com/viaduct-ai/kustomize-sops)
 
 Already deployed platform and running services:
 
@@ -177,20 +230,65 @@ kustomize build --enable_alpha_plugins manifests/overlays/ENV_NAME | oc apply -f
 3. Create a `secret-generator.yaml` file in this new folder with following content:
 
    ```yaml
-   apiVersion: goabout.com/v1beta1
-   kind: SopsSecretGenerator
+   apiVersion: viaduct.ai/v1
+   kind: ksops
    metadata:
-   name: NEW_INSTANCE_NAME
+     name: secret-generator
    files:
-     - config.ini
+     - INSTANCE_NAME.enc.yaml
    ```
 
-4. Create a `config.ini` file in this folder and encrypt it via sops:
+4. Create a `INSTANCE_NAME.enc.yaml` file in this folder and encrypt it via sops:
+
+   ```yaml
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: dev-instance
+   stringData:
+     source.creds.yaml: |
+       aws_access_key_id: KEY_ID_FOR_SOURCE
+       aws_secret_access_key: SECRET_FOR_SOURCE
+
+     destination.creds.yaml: |
+       aws_access_key_id: DEFAULT_KEY_ID_FOR_DESTINATIONS
+       aws_secret_access_key: DEFAULT_SECRET_FOR_DESTINATIONS
+
+     destination.2.creds.yaml: |
+       aws_access_key_id: KEY_ID_FOR_DESTINATION_ON_INDEX_2
+       aws_secret_access_key: SECRET_FOR_DESTINATION_ON_INDEX_2
+
+     config.yaml: |
+       alerts_smtp_server: smtp.corp.redhat.com
+       alerts_from: solgate-alerts@redhat.com
+       alerts_to: dev-null@redhat.com
+       timedelta: 5h
+
+       source:
+         endpoint_url: https://s3.upshift.redhat.com
+         formatter: "{date}/{collection}.{ext}"
+         base_path: DH-PLAYPEN/storage/input
+
+       destinations:
+         - endpoint_url: https://s3.upshift.redhat.com
+           formatter: "{collection}/historic/{date}-{collection}.{ext}"
+           base_path: DH-PLAYPEN/storage/output
+           unpack: yes
+
+         - endpoint_url: https://s3.upshift.redhat.com
+           formatter: "{collection}/latest/full_data.csv"
+           base_path: DH-PLAYPEN/storage/output
+           unpack: yes
+
+         - endpoint_url: https://s3.upshift.redhat.com
+           base_path: DH-PLAYPEN/storage/output
+   ```
 
    ```sh
-   vim overlays/ENV_NAME/NEW_INSTANCE_NAME/config.ini
-   sops -e -i overlays/ENV_NAME/NEW_INSTANCE_NAME/config.ini
+   sops -e -i overlays/ENV_NAME/NEW_INSTANCE_NAME/INSTANCE_NAME.env.yaml
    ```
+
+   Please make sure the `*.creds.yaml` entries in the secret are encrypted.
 
 5. Create all event source patch files for this instance (`webhook-es.yaml`, `calendar-es.yaml`, etc.).
 6. Update the resource and patch listing in the `overlays/ENV_NAME/kustomization.yaml`:
