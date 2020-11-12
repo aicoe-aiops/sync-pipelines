@@ -1,0 +1,26 @@
+source:
+  # The source is missing formatter key, therefore the variables are unknown to the destination formatter
+  aws_access_key_id: KEYID
+  aws_secret_access_key: ACCESSKEY
+  endpoint_url: https://s3.upshift.redhat.com
+  base_path: DH-PLAYPEN/storage/input
+
+destinations:
+  - aws_access_key_id: KEYID
+    aws_secret_access_key: ACCESSKEY
+    endpoint_url: https://s3.upshift.redhat.com
+    base_path: DH-PLAYPEN/storage/output
+    formatter: "{collection}/historic/{date}-{collection}.{ext}"
+    unpack: yes
+
+  - aws_access_key_id: KEYID
+    aws_secret_access_key: ACCESSKEY
+    endpoint_url: https://s3.upshift.redhat.com
+    formatter: "{collection}/latest/full_data.csv"
+    base_path: DH-PLAYPEN/storage/output
+    unpack: yes
+
+  - aws_access_key_id: KEYID
+    aws_secret_access_key: ACCESSKEY
+    endpoint_url: https://s3.upshift.redhat.com
+    base_path: DH-PLAYPEN/storage/output

@@ -1,5 +1,6 @@
 """Test suite for solgate/transfer.py."""
 
+from pathlib import Path
 import pytest
 
 from solgate import transfer
@@ -13,7 +14,7 @@ def test_send(mocker, file_list, mocked_solgate_s3_file_system):
     """Should request files to be sent to clients."""
     mocked_transfer_single_file = mocker.patch("solgate.transfer._transfer_single_file")
 
-    transfer.send(file_list)
+    transfer.send(file_list, {})
 
     for f in file_list:
         mocked_transfer_single_file.assert_any_call(f["relpath"], [mocked_solgate_s3_file_system])
@@ -24,14 +25,14 @@ def test_send_no_key(mocker, file_list, mocked_solgate_s3_file_system):
     """Should fail to transfer files where the key is missing."""
     mocker.patch("solgate.transfer._transfer_single_file")
 
-    assert transfer.send(file_list) is False
+    assert transfer.send(file_list, {}) is False
 
 
 def test_send_not_configured_properly(mocker):
     """Should fail without config file."""
     mocker.patch("builtins.open", side_effect=FileNotFoundError)
 
-    assert transfer.send([], config_file="/this/file/doesnt/exist.ini") is False
+    assert transfer.send([], dict(filename="this.yaml", path=Path("/doesnt/exist"))) is False
 
 
 def test_send_unable_to_transfer(mocker, mocked_solgate_s3_file_system):
@@ -39,37 +40,32 @@ def test_send_unable_to_transfer(mocker, mocked_solgate_s3_file_system):
     mocker.patch("solgate.transfer._transfer_single_file", return_value=False)
 
     spy_send = mocker.spy(transfer.logger, "error")
-    assert transfer.send([dict(relpath="a/b/file.csv")]) is False
+    assert transfer.send([dict(relpath="a/b/file.csv")], {}) is False
     spy_send.assert_called_with(mocker.ANY, dict(failed_files=[dict(relpath="a/b/file.csv")]))
 
 
-@pytest.mark.parametrize("mocked_s3", ["sample_config.ini"], indirect=["mocked_s3"])
+@pytest.mark.parametrize("mocked_s3", ["sample_config.yaml"], indirect=["mocked_s3"])
 def test_calc_s3_files(mocked_s3):
     """Should return parsed object keys for source and all destinations with formatter."""
     gen = lambda: transfer.calc_s3_files("2020-01-01/collection_name.csv.gz", mocked_s3)  # noqa
 
     assert [(f.client.name, f.key) for f in gen()] == [
         ("source", "2020-01-01/collection_name.csv.gz"),
-        ("destination_unpack_historic", "collection_name/historic/2020-01-01-collection_name.csv"),
-        ("destination_unpack_latest", "collection_name/latest/full_data.csv"),
-        ("destination_raw", "2020-01-01/collection_name.csv.gz"),
+        ("destination.0", "collection_name/historic/2020-01-01-collection_name.csv"),
+        ("destination.1", "collection_name/latest/full_data.csv"),
+        ("destination.2", "2020-01-01/collection_name.csv.gz"),
     ]
 
 
-@pytest.mark.parametrize("mocked_s3", ["without_source_formatter.ini"], indirect=["mocked_s3"])
+@pytest.mark.parametrize("mocked_s3", ["without_source_formatter.yaml"], indirect=["mocked_s3"])
 def test_calc_s3_files_without_formatter(mocked_s3):
     """Should return parsed object keys for source and all destinations without formatter."""
     gen = lambda: transfer.calc_s3_files("2020-01-01/collection_name.csv.gz", mocked_s3)  # noqa
     assert [f.key for f in gen()] == ["2020-01-01/collection_name.csv.gz"] * 4
-    assert [f.client.name for f in gen()] == [
-        "source_test",
-        "destination_unpack_historic",
-        "destination_unpack_latest",
-        "destination_raw",
-    ]
+    assert [f.client.name for f in gen()] == ["source", "destination.0", "destination.1", "destination.2"]
 
 
-@pytest.mark.parametrize("mocked_s3", ["sample_config.ini"], indirect=["mocked_s3"])
+@pytest.mark.parametrize("mocked_s3", ["sample_config.yaml"], indirect=["mocked_s3"])
 def test__transfer_single_file(mocked_s3):
     """Should transfer and verify file."""
     mocked_s3[0].s3fs.touch("DH-PLAYPEN/storage/input/2020-01-01/collection_name.csv.gz")
@@ -85,7 +81,7 @@ def test__transfer_single_file(mocked_s3):
     assert all([mocked_s3[idx].info(f) for idx, f in enumerate(files)])
 
 
-@pytest.mark.parametrize("mocked_s3", ["same_client.ini", "same_flags.ini"], indirect=["mocked_s3"])
+@pytest.mark.parametrize("mocked_s3", ["same_client.yaml", "same_flags.yaml"], indirect=["mocked_s3"])
 def test__transfer_single_file_same_client(mocked_s3):
     """Should transfer faster between the same clients."""
     mocked_s3[0].s3fs.touch("BUCKET/a/b.csv")
@@ -95,7 +91,7 @@ def test__transfer_single_file_same_client(mocked_s3):
     assert all([mocked_s3[idx].info(f) for idx, f in enumerate(files)])
 
 
-@pytest.mark.parametrize("mocked_s3", ["sample_config.ini"], indirect=["mocked_s3"])
+@pytest.mark.parametrize("mocked_s3", ["sample_config.yaml"], indirect=["mocked_s3"])
 def test__transfer_single_file_unable_to_verify(mocked_s3, mocker):
     """Should return False on verification failure."""
     mocked_s3[0].s3fs.touch("DH-PLAYPEN/storage/input/2020-01-01/collection_name.csv.gz")
@@ -104,7 +100,7 @@ def test__transfer_single_file_unable_to_verify(mocked_s3, mocker):
     assert transfer._transfer_single_file("2020-01-01/collection_name.csv.gz", mocked_s3) is False
 
 
-@pytest.mark.parametrize("mocked_s3", ["sample_config.ini"], indirect=["mocked_s3"])
+@pytest.mark.parametrize("mocked_s3", ["sample_config.yaml"], indirect=["mocked_s3"])
 def test__transfer_single_file_fails(mocked_s3):
     """Should return False if unable to transfer."""
     mocked_s3[0].s3fs.touch("DH-PLAYPEN/storage/input/2020-01-01/collection_name.csv.gz")
@@ -114,7 +110,7 @@ def test__transfer_single_file_fails(mocked_s3):
     assert transfer._transfer_single_file("2020-01-01/collection_name.csv.gz", mocked_s3) is False
 
 
-@pytest.mark.parametrize("mocked_s3", ["same_client.ini"], indirect=["mocked_s3"])
+@pytest.mark.parametrize("mocked_s3", ["same_client.yaml"], indirect=["mocked_s3"])
 def test_copy_same_client(mocked_s3, mocker):
     """Should use client.copy when the clients are the same."""
     mocked_s3[0].s3fs.touch("BUCKET/a/b.csv")
@@ -128,7 +124,7 @@ def test_copy_same_client(mocked_s3, mocker):
     spies_copy[1].assert_not_called()
 
 
-@pytest.mark.parametrize("mocked_s3", ["same_flags.ini"], indirect=["mocked_s3"])
+@pytest.mark.parametrize("mocked_s3", ["same_flags.yaml"], indirect=["mocked_s3"])
 def test_copy_same_flags(mocked_s3, mocker):
     """Should open the files with equal settings if the client differs but the flags are the same."""
     mocked_s3[0].s3fs.touch("BUCKET/a/b.csv")
@@ -140,7 +136,7 @@ def test_copy_same_flags(mocked_s3, mocker):
     spies[1].assert_called_once_with("a/b.csv", "wb")
 
 
-@pytest.mark.parametrize("mocked_s3", ["different_clients.ini"], indirect=["mocked_s3"])
+@pytest.mark.parametrize("mocked_s3", ["different_clients.yaml"], indirect=["mocked_s3"])
 def test_copy_different_clients(mocked_s3, mocker):
     """Should pass on flags if the client flags differ."""
     mocked_s3[0].s3fs.touch("BUCKET/a/b.csv.gz")

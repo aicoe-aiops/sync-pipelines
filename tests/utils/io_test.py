@@ -3,6 +3,7 @@ import datetime
 import importlib
 from dataclasses import dataclass
 from json import dumps
+from pathlib import Path
 
 import pytest
 
@@ -109,38 +110,79 @@ def test__create_parser(mocker, formatter, regex):
     assert io._create_parser(formatter).pattern.pattern == regex
 
 
-def test__read_config(fixture_dir):
+def test__read_yaml_file(fixture_dir):
     """Should parse config file."""
-    config = io._read_config(fixture_dir / "sample_config.ini")
+    config = io._read_yaml_file(fixture_dir / "sample_config.yaml")
 
-    assert len(config.sections()) == 5
-    assert "solgate" in config.sections()
-
-
-def test__read_config_default_location(fixture_dir, mocker):
-    """Should read config from default location if no path is given."""
-    mocked_open = mocker.mock_open(read_data="[solgate]\n")
-    mocker.patch("builtins.open", mocked_open)
-    io._read_config()
-
-    mocked_open.assert_called_once()
-    assert mocked_open.call_args[0][0] == io.DEFAULT_CONFIG_LOCATION
+    assert len(config["destinations"]) == 3
+    assert len(config.keys()) == 6
 
 
-def test__read_config_empty(mocker):
+def test__read_yaml_file_empty(mocker):
     """Should raise exception when config file is empty."""
     mocked_open = mocker.mock_open()
     mocker.patch("builtins.open", mocked_open)
     with pytest.raises(EnvironmentError):
-        io._read_config()
+        io._read_yaml_file("")
 
 
 @pytest.mark.parametrize(
-    "config_file,number_of_destinations", [("sample_config.ini", 3), ("single_destination.ini", 1)]
+    "config,loaded_creds,call_count",
+    [
+        (dict(name="a"), dict(aws_access_key_id="b", aws_secret_access_key="c"), 1),
+        (dict(name="a", aws_access_key_id="b", aws_secret_access_key="c"), None, 0),
+        (dict(name="a", aws_access_key_id="b"), dict(aws_secret_access_key="c"), 1),
+    ],
+)
+def test__fetch_creds(config, loaded_creds, mocker, call_count):
+    """Should result in properly loaded credentials."""
+    mocked = mocker.patch("solgate.utils.io._read_creds_file", return_value=loaded_creds)
+    io._fetch_creds(Path(""), config)
+
+    assert config == dict(name="a", aws_access_key_id="b", aws_secret_access_key="c")
+    assert mocked.call_count == call_count
+
+
+@pytest.mark.parametrize("loaded_creds", [{}, dict(aws_access_key_id="b"), dict(aws_secret_access_key="c")])
+def test__fetch_creds_negative(mocker, loaded_creds):
+    """Should raise when credentials are incomplete."""
+    config = dict(name="a")
+    mocker.patch("solgate.utils.io._read_creds_file", return_value=loaded_creds)
+
+    with pytest.raises(IOError):
+        io._fetch_creds(Path(""), config)
+
+
+@pytest.mark.parametrize(
+    "kind,expected_values",
+    [
+        ("source", ["SOURCE_KEY_ID", "SOURCE_ACCESS_KEY"]),
+        ("destination.0", ["DESTINATION_DEFAULT_KEY_ID", "DESTINATION_DEFAULT_ACCESS_KEY"]),
+        ("destination.1", ["DESTINATION_DEFAULT_KEY_ID", "DESTINATION_DEFAULT_ACCESS_KEY"]),
+        ("destination.2", ["DESTINATION_CUSTOM_KEY_ID", "DESTINATION_CUSTOM_ACCESS_KEY"]),
+    ],
+)
+def test__read_creds_file(fixture_dir, kind, expected_values):
+    """Should load credentials with proper fallbacks."""
+    assert list(io._read_creds_file(fixture_dir / "separate_creds_file_config", kind).values()) == expected_values
+
+
+@pytest.mark.parametrize("kind,call_count", [("source", 1), ("destination", 1), ("destination.0", 2)])
+def test__read_creds_file_raises(mocker, kind, call_count):
+    """Should raise if the file and fallback are both not available."""
+    mocked = mocker.patch("solgate.utils.io._read_yaml_file", side_effect=FileNotFoundError)
+
+    with pytest.raises(FileNotFoundError):
+        io._read_creds_file(Path(""), kind)
+    assert mocked.call_count == call_count
+
+
+@pytest.mark.parametrize(
+    "config_file,number_of_destinations", [("sample_config.yaml", 3), ("single_destination.yaml", 1)]
 )
 def test_read_s3_config(fixture_dir, config_file, number_of_destinations):
     """Should parse s3 sections of the config."""
-    s3_sections = {k: v for k, v in io.read_s3_config(fixture_dir / config_file)}
+    s3_sections = {section["name"]: section for section in io.read_s3_config(config_file, fixture_dir)}
 
     assert len(s3_sections.items()) == number_of_destinations + 1
     assert "source" in s3_sections.keys()
@@ -152,9 +194,9 @@ def test_read_s3_config(fixture_dir, config_file, number_of_destinations):
 
 def test_parse_booleans(mocker):
     """Should properly parse boolean values."""
-    mocked_open = mocker.mock_open(read_data="[solgate]\ntrue_property = yes\nfalse_property = no")
+    mocked_open = mocker.mock_open(read_data="true_property: yes\nfalse_property: no")
     mocker.patch("builtins.open", mocked_open)
-    section = io.read_general_config()
+    section = io.read_general_config("", Path(""))
 
     assert section["true_property"] is True
     assert section["false_property"] is False
@@ -162,17 +204,9 @@ def test_parse_booleans(mocker):
 
 def test_read_general_config(fixture_dir):
     """Should parse s3 sections of the config."""
-    config = io.read_general_config(fixture_dir / "sample_config.ini")
+    config = io.read_general_config("sample_config.yaml", fixture_dir)
 
     assert len(config.items()) == 4
-
-
-def test_read_general_config_negative(mocker):
-    """Should raise exception when general section is missing from the config file."""
-    mocked_open = mocker.mock_open(read_data="[some]\nother = sections\n\n[but]\nnot = the\nones = we need")
-    mocker.patch("builtins.open", mocked_open)
-    with pytest.raises(EnvironmentError):
-        io.read_general_config()
 
 
 def test_deserialize(mocker):

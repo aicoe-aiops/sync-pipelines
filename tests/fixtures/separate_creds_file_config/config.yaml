@@ -1,0 +1,22 @@
+source:
+  endpoint_url: https://s3.upshift.redhat.com
+  base_path: DH-PLAYPEN/storage/input
+
+destinations:
+  # Should use default destination creds
+  - endpoint_url: https://s3.upshift.redhat.com
+    base_path: DH-PLAYPEN/storage/output0
+
+    # Should use default destination creds
+  - endpoint_url: https://s3.upshift.redhat.com
+    base_path: DH-PLAYPEN/storage/output1
+
+    # Should use custom destination creds
+  - endpoint_url: https://s3.upshift.redhat.com
+    base_path: DH-PLAYPEN/storage/output2
+
+    # Should use inlined destination creds
+  - endpoint_url: https://s3.upshift.redhat.com
+    base_path: DH-PLAYPEN/storage/output2
+    aws_access_key_id: DESTINATION_INLINE_KEY_ID
+    aws_secret_access_key: DESTINATION_INLINE_ACCESS_KEY

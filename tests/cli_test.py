@@ -1,5 +1,6 @@
 """Test suite for solgate/cli.py."""
 
+from pathlib import Path
 from click.testing import CliRunner
 import pytest
 
@@ -18,9 +19,20 @@ def test_version(run):
     assert "Solgate version" in run(["version"]).output
 
 
+def context(**kwargs):
+    """Dynamic fixture for parametrized tests updating default config."""
+    defaults = dict(filename="config.yaml", path=Path("/etc/solgate"))
+    defaults.update(kwargs)
+    return defaults
+
+
 @pytest.mark.parametrize(
     "cli_args,func_args,file_output",
-    [(["list"], [None], False), (["-c", ".", "list"], ["."], False), (["list", "-o", "output.json"], [None], True),],
+    [
+        (["list"], [context()], False),
+        (["-c", ".", "list"], [context(path=Path("."))], False),
+        (["list", "-o", "output.json"], [context()], True),
+    ],
 )
 def test_list(run, mocker, cli_args, func_args, file_output):
     """Should call proper functions on list command."""
@@ -51,9 +63,9 @@ def test_list_negative(run, mocker):
 @pytest.mark.parametrize(
     "cli_args,func_args",
     [
-        (["send", "key"], [[dict(relpath="key")], None]),
-        (["send", "-l", "."], [[dict(relpath="file/key")], None]),
-        (["-c", ".", "send", "key"], [[dict(relpath="key")], "."]),
+        (["send", "key"], [[dict(relpath="key")], context()]),
+        (["send", "-l", "."], [[dict(relpath="file/key")], context()]),
+        (["-c", ".", "send", "key"], [[dict(relpath="key")], context(path=Path("."))]),
     ],
 )
 def test_send(run, mocker, cli_args, func_args):
@@ -132,7 +144,7 @@ context_keys = ["name", "namespace", "status", "host", "timestamp"]
             ),
         ),
         (
-            ["-c", "general_section_only.ini", "report"],
+            ["-c", "REPLACED_WITH_FIXTURE_DIR", "--config-filename", "general_section_only.yaml", "report"],
             [
                 [None, None, None, None, None],
                 "",
@@ -152,7 +164,7 @@ def test_report(run, mocker, cli_args, func_args, fixture_dir, env):
 
     logger_spy = None
     if cli_args[0] == "-c":
-        cli_args[1] = fixture_dir / cli_args[1]
+        cli_args[1] = fixture_dir
     else:
         # If config wasn't specified, spy for a warning
         logger_spy = mocker.spy(logger, "warn")

@@ -11,12 +11,7 @@ from solgate.utils import s3
 
 @pytest.mark.parametrize(
     "name,default_endpoints_key,endpoint_url",
-    [
-        ("source_x", "source", None),
-        ("source", "source", None),
-        ("anything_else", "destination", None),
-        ("source_y", None, "https://s3.example.com"),
-    ],
+    [("source", "source", None), ("anything_else", "destination", None), ("source_y", None, "https://s3.example.com"),],
 )
 def test_s3_file_system_endpoints(name, default_endpoints_key, endpoint_url):
     """Should select default endpoint url if not specified, leave untouched if specified."""
@@ -26,7 +21,7 @@ def test_s3_file_system_endpoints(name, default_endpoints_key, endpoint_url):
 
 def test_s3_file_system_init():
     """Should parse args on init and pass expected values to S3fs's S3FileSystem."""
-    fs = s3.S3FileSystem("source_x", "KEY_ID", "SECRET_KEY", "BUCKET", formatter="FORMATTER", unpack=True)
+    fs = s3.S3FileSystem("source", "KEY_ID", "SECRET_KEY", "BUCKET", formatter="FORMATTER", unpack=True)
 
     assert fs.is_source
     assert fs.formatter == "FORMATTER"
@@ -39,18 +34,13 @@ def test_s3_file_system_init():
 def test_s3_file_system_from_config_file_multiple_sources(fixture_dir):
     """Should not allow multiple sources in a config file."""
     with pytest.raises(EnvironmentError):
-        s3.S3FileSystem.from_config_file(fixture_dir / "multiple_sources.ini")
+        s3.S3FileSystem.from_config_file(dict(filename="multiple_sources.yaml", path=fixture_dir))
 
 
-@pytest.mark.parametrize("mocked_s3", ["sample_config.ini"], indirect=["mocked_s3"])
+@pytest.mark.parametrize("mocked_s3", ["sample_config.yaml"], indirect=["mocked_s3"])
 def test_s3_file_system_from_config_file_order(mocked_s3):
     """Should order clients."""
-    assert [str(i) for i in mocked_s3] == [
-        "source",
-        "destination_unpack_historic",
-        "destination_unpack_latest",
-        "destination_raw",
-    ]
+    assert [str(i) for i in mocked_s3] == ["source", "destination.0", "destination.1", "destination.2"]
 
 
 @pytest.mark.parametrize(
@@ -92,7 +82,7 @@ def test_s3_file_system_str():
         ("BUCKET/base_with_slash/", "BUCKET/base_with_slash/c/d.csv"),
     ],
 )
-@pytest.mark.parametrize("mocked_s3", ["same_client.ini"], indirect=["mocked_s3"])
+@pytest.mark.parametrize("mocked_s3", ["same_client.yaml"], indirect=["mocked_s3"])
 def test_s3_file_system_copy(dest_base, result, mocked_s3):
     """Should copy within the same S3fs."""
     fs = mocked_s3[0]
@@ -113,7 +103,7 @@ def test_s3_file_system_copy(dest_base, result, mocked_s3):
         (dict(constraint=lambda m: m["LastModified"] == datetime(2020, 1, 1, tzinfo=timezone.utc)), 1),
     ],
 )
-@pytest.mark.parametrize("mocked_s3", ["same_client.ini"], indirect=["mocked_s3"])
+@pytest.mark.parametrize("mocked_s3", ["same_client.yaml"], indirect=["mocked_s3"])
 def test_s3_file_system_find(mocked_s3, kwargs, expected_object_count):
     """Should find the right files based on different criteria."""
     fs = mocked_s3[0]
@@ -134,7 +124,7 @@ def test_s3_file_system_find(mocked_s3, kwargs, expected_object_count):
         pytest.param(lambda f: GzipFile(fileobj=f, mode="wb"), dict(unpack=True), id="Compressed file"),
     ],
 )
-@pytest.mark.parametrize("mocked_s3", ["same_client.ini"], indirect=["mocked_s3"])
+@pytest.mark.parametrize("mocked_s3", ["same_client.yaml"], indirect=["mocked_s3"])
 def test_s3_file_system_open(mocked_s3, write_wrapper, kwargs):
     """Should open and read files properly."""
     fs = mocked_s3[0]
@@ -145,7 +135,7 @@ def test_s3_file_system_open(mocked_s3, write_wrapper, kwargs):
         assert f.read() == b"a,b,c\n"
 
 
-@pytest.mark.parametrize("mocked_s3", ["same_client.ini"], indirect=["mocked_s3"])
+@pytest.mark.parametrize("mocked_s3", ["same_client.yaml"], indirect=["mocked_s3"])
 def test_s3_file_system_open_write(mocked_s3):
     """Should allow opening in write mode."""
     fs = mocked_s3[0]
@@ -156,7 +146,7 @@ def test_s3_file_system_open_write(mocked_s3):
         assert f.read() == b"a,b,c\n"
 
 
-@pytest.mark.parametrize("mocked_s3", ["same_client.ini"], indirect=["mocked_s3"])
+@pytest.mark.parametrize("mocked_s3", ["same_client.yaml"], indirect=["mocked_s3"])
 def test_s3_file_system_open_write_with_unpack(mocked_s3):
     """Should fail to unpack in write mode."""
     fs = mocked_s3[0]
@@ -164,7 +154,7 @@ def test_s3_file_system_open_write_with_unpack(mocked_s3):
         fs.open("file.csv", "wb", unpack=True).__enter__()
 
 
-@pytest.mark.parametrize("mocked_s3", ["same_client.ini"], indirect=["mocked_s3"])
+@pytest.mark.parametrize("mocked_s3", ["same_client.yaml"], indirect=["mocked_s3"])
 def test_s3_file_system_info(mocked_s3):
     """Should list file metadata within basepath only."""
     fs = mocked_s3[0]
@@ -175,7 +165,7 @@ def test_s3_file_system_info(mocked_s3):
         fs.info("BUCKET/file.csv")
 
 
-@pytest.mark.parametrize("mocked_s3", ["same_client.ini"], indirect=["mocked_s3"])
+@pytest.mark.parametrize("mocked_s3", ["same_client.yaml"], indirect=["mocked_s3"])
 def test_s3_file_system_rm(mocked_s3):
     """Should unlink file."""
     fs = mocked_s3[0]
