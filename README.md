@@ -1,5 +1,11 @@
 # Solgate
 
+![License](https://img.shields.io/github/license/aicoe-aiops/sync-pipelines)
+![Python version](https://img.shields.io/github/pipenv/locked/python-version/aicoe-aiops/sync-pipelines)
+![Latest release](https://img.shields.io/github/v/tag/aicoe-aiops/sync-pipelines)
+[![PyPI](https://img.shields.io/pypi/v/solgate)](https://pypi.org/project/solgate)
+[![Quay.io](https://img.shields.io/badge/quay.io-solgate-green)](https://quay.io/repository/thoth-station/solgate)
+
 Yet another data sync pipelines job runner.
 
 A CLI utility that is expected to be automated via container native workflow engines like [Argo](https://argoproj.github.io/argo/) or [Tekton](https://tekton.dev/).
@@ -121,6 +127,38 @@ The resolution priority:
 | source      | `inlined > source.creds.yaml`                                     |
 | destination | `inlined > destination.INDEX.creds.yaml > destination.creds.yaml` |
 
+### Example config file
+
+Here's a full configuration file example, all together.
+
+```yaml
+alerts_smtp_server: smtp.corp.redhat.com
+alerts_from: solgate-alerts@redhat.com
+alerts_to: dev-null@redhat.com
+timedelta: 1d
+
+source:
+  aws_access_key_id: KEY_ID
+  aws_secret_access_key: SECRET
+  endpoint_url: https://s3.upshift.redhat.com
+  formatter: "{date}/{collection}.{ext}"
+  base_path: DH-PLAYPEN/storage/input
+
+destinations:
+  - aws_access_key_id: KEY_ID
+    aws_secret_access_key: SECRET
+    endpoint_url: https://s3.upshift.redhat.com
+    formatter: "{collection}/historic/{date}-{collection}.{ext}"
+    base_path: DH-PLAYPEN/storage/output
+
+  - aws_access_key_id: KEY_ID
+    aws_secret_access_key: SECRET
+    endpoint_url: https://s3.upshift.redhat.com
+    formatter: "{collection}/latest/full_data.csv"
+    base_path: DH-PLAYPEN/storage/output
+    unpack: yes
+```
+
 ## Usage
 
 Solgate is mainly intended for use in automation within Argo Workflows. However it can be also used as a standalone CLI tool for manual transfers and (via extensions) for (TBD) manifest scaffold generation and (TBD) deployed instance monitoring.
@@ -133,11 +171,20 @@ Before the actual sync can be run, it is required
 solgate list
 ```
 
+| CLI option <img width=20/> | Config file entry | Description                                                                                    |
+| -------------------------- | ----------------- | ---------------------------------------------------------------------------------------------- |
+| `-o`                       |                   | Output to a file instead of stdout. Creates a listing file.                                    |
+|                            | `timedelta`       | Define a lookup restriction. Only files newer than this value are reported. Defaults to 1 day. |
+
 ### Sync objects
 
 ```sh
-solgate transfer
+solgate send KEY
 ```
+
+| CLI option <img width=20/> | Description                                                                                                                                 |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `-l`, `--listing-file`     | A listing file ingested by this command. Format is expected to be the same as `solgate list` output. If set, the `KEY` argument is ignored. |
 
 ### Notification service
 
@@ -171,11 +218,11 @@ Options can be set either via CLI argument or via environment variable:
   CLI option > Environment variable > Config file entry > Default value
   ```
 
-  | CLI option <img width=20/> | Environment variable name | Config file entry in `[solgate]` section | Description                                                            |
-  | -------------------------- | ------------------------- | ---------------------------------------- | ---------------------------------------------------------------------- |
-  | `--from`                   | `ALERT_SENDER`            | `alerts_from`                            | Email alert sender address. Defaults to solgate-alerts@redhat.com.     |
-  | `--to`                     | `ALERT_RECIPIENT`         | `alerts_to`                              | Email alert recipient address. Defaults to data-hub-alerts@redhat.com. |
-  | `--smtp`                   | `SMTP_SERVER`             | `alerts_smtp_server`                     | SMTP server URL. Defaults to smtp.corp.redhat.com.                     |
+  | CLI option <img width=20/> | Environment variable name | Config file entry    | Description                                                            |
+  | -------------------------- | ------------------------- | -------------------- | ---------------------------------------------------------------------- |
+  | `--from`                   | `ALERT_SENDER`            | `alerts_from`        | Email alert sender address. Defaults to solgate-alerts@redhat.com.     |
+  | `--to`                     | `ALERT_RECIPIENT`         | `alerts_to`          | Email alert recipient address. Defaults to data-hub-alerts@redhat.com. |
+  | `--smtp`                   | `SMTP_SERVER`             | `alerts_smtp_server` | SMTP server URL. Defaults to smtp.corp.redhat.com.                     |
 
 - Other:
 
@@ -215,6 +262,14 @@ kustomize build --enable_alpha_plugins manifests/overlays/ENV_NAME | oc apply -f
 ### Create a new instance
 
 **Will be handled via scaffold in next version!** <!-- noqa -->
+
+Prerequisites:
+
+Import GPG keys `EFDB9AFBD18936D9AB6B2EECBD2C73FF891FBC7E`, `A76372D361282028A99F9A47590B857E0288997C`, `04DAFCD9470A962A2F272984E5EB0DA32F3372AC`
+
+```sh
+gpg --keyserver keyserver.ubuntu.com --recv EFDB9AFBD18936D9AB6B2EECBD2C73FF891FBC7E A76372D361282028A99F9A47590B857E0288997C 04DAFCD9470A962A2F272984E5EB0DA32F3372AC
+```
 
 1. Create new folder named after the instance in the selected environment overlay.
 2. Create a `kustomization.yaml` file in this new folder with following content:
@@ -302,3 +357,50 @@ kustomize build --enable_alpha_plugins manifests/overlays/ENV_NAME | oc apply -f
      - ...
      - ./NEW_INSTANCE_NAME/EVENT_SOURCE_TYPE-es.yaml # For each event source trigger used
    ```
+
+## Developer setup
+
+### Local setup
+
+Install `pipenv` and set up the environment:
+
+```sh
+pipenv sync -d
+```
+
+Install/enable [pre-commit](https://pre-commit.com/) for this project:
+
+```sh
+pip install -g pre-commit
+pre-commit install
+```
+
+### Running tests
+
+With local environment set up, you can run tests locally like this:
+
+```sh
+pipenv run pytest . --cov solgate
+```
+
+### Building manifests
+
+Install local prerequisites for `kustomize` manifests:
+
+- [Kustomize](https://kustomize.io/)
+- [sops](https://github.com/mozilla/sops)
+- [ksops](https://github.com/viaduct-ai/kustomize-sops)
+
+Use `kustomize build --enable_aplha_plugins ...` to build manifests.
+
+### CI/CD
+
+We rely on [AICoE-CI](https://github.com/AICoE/aicoe-ci) GitHub application and bots to provide CI for us. All is configured via `.aicoe-ci.yaml`.
+
+### Releasing
+
+If you're a maintainer, please release via [GitHub issues](https://github.com/aicoe-aiops/sync-pipelines/issues/new/choose). New release creates:
+
+- Creates a `git` [release tag](https://github.com/aicoe-aiops/sync-pipelines/releases) on GitHub.
+- Pushes new image to Quay.io [thoth-station/solgate](https://quay.io/repository/thoth-station/solgate), tagged by the released version and `latest`.
+- Releases to PyPI [solgate](https://pypi.org/project/solgate) project.

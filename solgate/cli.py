@@ -75,7 +75,7 @@ def _send(ctx, key: str = None, listing_file: str = None):
 def _list(ctx, output: str = None):
     """Query the source bucket for files ready to be transferred.
 
-    Only files NEWER_THAN give value (added or modified) are listed.
+    Only files newer than `timedelta` config value (added or modified) are listed.
     """
     try:
         files = list_source(ctx.obj["config"])
