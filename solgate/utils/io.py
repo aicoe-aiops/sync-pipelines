@@ -2,14 +2,25 @@
 
 import json
 import re
-from configparser import ConfigParser, SectionProxy
+from pathlib import Path
+
+from yaml import load as yaml_load
+
+try:
+    from yaml import CLoader as Loader
+except ImportError:  # pragma nocover
+    from yaml import Loader  # type: ignore
+
 from dataclasses import dataclass
 from datetime import datetime
-from functools import lru_cache
+from functools import lru_cache, partial
 from string import Formatter
-from typing import Any, Dict, Iterator, Tuple, Union
+from typing import Any, Dict, Iterator
 
-DEFAULT_CONFIG_LOCATION = "/etc/solgate/config.ini"
+load = partial(yaml_load, Loader=Loader)
+
+CREDS_FILENAME_FORMAT = "{0}.creds.yaml"
+CREDS_FILE_KEYS = ["aws_access_key_id", "aws_secret_access_key"]
 
 
 class CustomEncoder(json.JSONEncoder):
@@ -56,67 +67,118 @@ def deserialize(filename: str) -> Any:
         return json.load(f)
 
 
-def _convert_config_value(section: SectionProxy, key: str) -> Union[str, bool]:
-    """Parse ConfigParser's boolean values."""
-    try:
-        return section.getboolean(key)
-    except ValueError:
-        return section.get(key)
-
-
-def _read_config(filename: str = None) -> ConfigParser:
-    """Read INI file and parse values.
+def _read_yaml_file(filename) -> Dict[str, Any]:
+    """Read a file.
 
     Args:
         filename (str, optional): Configuration file location. Defaults to None.
 
     Returns:
-        ConfigParser: Pythonic representation of the config file.
+        Dict[str, Any]: Pythonic representation of the config file.
 
     """
-    filename = filename or DEFAULT_CONFIG_LOCATION
-    config = ConfigParser()
-    config.read(filename)
+    with open(filename) as f:
+        config = load(f)
 
-    if not config.sections():
+    if not isinstance(config, dict) or not config.keys():
         raise IOError(f"Invalid config file {filename}")
 
     return config
 
 
-def read_s3_config(filename: str = None) -> Iterator[Tuple[str, dict]]:
-    """Read INI file and parse S3 clients related configuration.
+def _fetch_creds(path: Path, config: Dict[str, Any]):
+    """Fetch credentials for a config section if necessary.
+
+    In case the `config` doesn't feature the credentials already, try loading them from a local file within
+    the config folder `path`. Updates the original `config` dict.
 
     Args:
-        filename (str, optional): Configuration file location. Defaults to None.
+        path (Path):Configuration file location.
+        config (Dict[str, str]): Config section specific to a s3 location.
 
-    Yields:
-        Iterator[Tuple[str, dict]]: Section name and content dict pair.
+    Raises:
+        IOError: Raised when the credentials file doesn't contain the proper data.
 
     """
-    config = _read_config(filename)
-    for s in config.sections():
-        if s.startswith("source") or s.startswith("destination"):
-            yield s, {k: _convert_config_value(config[s], k) for k in config[s].keys()}
+    if set(config.keys()).issuperset(CREDS_FILE_KEYS):
+        return
+
+    creds = _read_creds_file(path, config["name"])
+    config.update(creds)
+
+    if not set(config.keys()).issuperset(CREDS_FILE_KEYS):
+        raise IOError(f"Invalid credentials file for {config['name']}")
 
 
-def read_general_config(filename: str = None) -> Dict[str, Any]:
+@lru_cache
+def _read_creds_file(path: Path, kind: str) -> Dict[str, str]:
+    """Read and memoize a credentials file.
+
+    Allows to specify unique ID within each 'kind' (dot separated). If the file containing this ID is not found, it
+    fallbacks to the default file for each kind.
+
+    Args:
+        path (Path): Configuration file location.
+        kind(str): 'source' or 'destination.XYZ' expected. The filename is derived from it using CREDS_FILENAME_FORMAT
+            template.
+
+    Returns:
+        Dict[str, str]: A dict with the credentials file content.
+
+    Examples:
+    >>> _read_creds_file('/etc/solgate', 'source')
+    # reads /etc/solgate/source.creds.yaml
+    >>> _read_creds_file('/etc/solgate', 'destination.1')
+    # reads /etc/solgate/destination.1.creds.yaml, if not found, fallbacks to /etc/solgate/destination.creds.yaml
+
+    """
+    try:
+        return _read_yaml_file(path / CREDS_FILENAME_FORMAT.format(kind))
+    except FileNotFoundError:
+        if "." in kind:
+            return _read_creds_file(path, kind.split(".")[0])
+        raise
+
+
+def read_s3_config(filename: str, path: Path) -> Iterator[dict]:
+    """Read YAML file and parse S3 clients related configuration.
+
+    Args:
+        filename (str): Configuration file name.
+        path (Path): Configuration file location.
+
+    Yields:
+        Iterator[dict]: Section name and content dict pair.
+
+    """
+    config = _read_yaml_file(path / filename)
+    source = dict(name="source", **config.get("source", {}))
+    _fetch_creds(path, source)
+    yield source
+
+    for idx, s in enumerate(config.get("destinations", [])):
+        destination = dict(name=f"destination.{idx}", **s)
+        _fetch_creds(path, destination)
+        yield destination
+
+
+def read_general_config(filename: str, path: Path) -> Dict[str, Any]:
     """Read INI file and parse general configuration.
 
     Args:
-        filename (str, optional): Configuration file location. Defaults to None.
+        filename (str): Configuration file name.
+        path (Path): Configuration file location.
 
     Returns:
-        dict: General configuration section data.
+        Dict[str, Any]: General configuration section data.
 
     """
-    config = _read_config(filename)
-    try:
-        section = config["solgate"]
-    except KeyError:
-        raise IOError(f"Invalid config file {filename}, missing 'solgate' section.")
+    config = _read_yaml_file(path / filename)
 
-    return {k: _convert_config_value(section, k) for k in section.keys()}
+    config.pop("source", None)
+    config.pop("destinations", None)
+
+    return config
 
 
 @dataclass

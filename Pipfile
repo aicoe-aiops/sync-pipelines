@@ -17,6 +17,7 @@ s3fs = "==0.4.*"
 logstash-formatter = ">=0.5.17"
 jinja2 = ">=2.11"
 click = "*"
+pyyaml = "*"
 
 [requires]
 python_version = "3.8"

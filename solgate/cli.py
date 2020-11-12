@@ -2,6 +2,7 @@
 
 """CLI for Solgate."""
 
+from pathlib import Path
 import click
 
 from solgate import list_source, send, send_report, __version__ as version
@@ -10,9 +11,12 @@ from .report import DEFAULT_RECIPIENT, DEFAULT_SENDER, DEFAULT_SMTP_SERVER
 
 
 @click.group()
-@click.option("-c", "--config", type=click.Path(exists=True), help="Configuration file location.")
+@click.option(
+    "--config-filename", type=click.STRING, help="Configuration file name within config folder.", default="config.yaml"
+)
+@click.option("-c", "--config-folder", type=click.Path(), help="Configuration folder.", default="/etc/solgate")
 @click.pass_context
-def cli(ctx, config):  # noqa: D301
+def cli(ctx, config_filename, config_folder):  # noqa: D301
     """Solgate - the data sync pipeline.
 
     Transfer given files between any S3 compatible storage: AWS S3, Ceph object storage, MinIO.
@@ -25,7 +29,7 @@ def cli(ctx, config):  # noqa: D301
     - Repartition data on the fly.
     """
     ctx.ensure_object(dict)
-    ctx.obj["CONFIG_PATH"] = config
+    ctx.obj["config"] = dict(filename=config_filename, path=Path(config_folder))
 
 
 @cli.command("send")
@@ -54,7 +58,7 @@ def _send(ctx, key: str = None, listing_file: str = None):
         exit(1)
 
     try:
-        success = send(files_to_transfer, ctx.obj["CONFIG_PATH"])
+        success = send(files_to_transfer, ctx.obj["config"])
     except:  # noqa: E722
         logger.error("Unexpected error during transfer", exc_info=True)
         exit(1)
@@ -74,7 +78,7 @@ def _list(ctx, output: str = None):
     Only files NEWER_THAN give value (added or modified) are listed.
     """
     try:
-        files = list_source(ctx.obj["CONFIG_PATH"])
+        files = list_source(ctx.obj["config"])
         if output:
             serialize(files, output)
         else:
@@ -153,7 +157,7 @@ def _report(
     https://github.com/argoproj/argo/blob/master/docs/variables.md#global
     """
     try:
-        config = read_general_config(ctx.obj["CONFIG_PATH"])
+        config = read_general_config(**ctx.obj["config"])
     except IOError:
         logger.warn("Config file is not present or not valid, alerting to/from default email address.")
         config = {}

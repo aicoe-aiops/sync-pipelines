@@ -55,7 +55,7 @@ def parse_timedelta(timestr: str) -> timedelta:
     return timedelta(**time_params)
 
 
-def list_source(config_file: str = None) -> List[Dict[str, Any]]:
+def list_source(config: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Lookup recently modifined files.
 
     List files on S3 and filter those that were modified in recent history.
@@ -70,10 +70,10 @@ def list_source(config_file: str = None) -> List[Dict[str, Any]]:
             the base path.
 
     """
-    config = read_general_config(config_file)
+    general_config = read_general_config(**config)
     try:
-        oldest_date = datetime.now(timezone.utc) - parse_timedelta(config.get("timedelta", DEFAULT_TIMEDELTA))
-        s3 = S3FileSystem.from_config_file(config_file)[0]
+        oldest_date = datetime.now(timezone.utc) - parse_timedelta(general_config.get("timedelta", DEFAULT_TIMEDELTA))
+        s3 = S3FileSystem.from_config_file(config)[0]
     except EnvironmentError:
         logger.error("Environment not set properly, exiting", exc_info=True)
         exit(1)

@@ -117,7 +117,7 @@ def _transfer_single_file(source_path: str, clients: List[S3FileSystem]) -> bool
     return True
 
 
-def send(files_to_transfer: List[Dict[str, Any]], config_file: str = None) -> bool:
+def send(files_to_transfer: List[Dict[str, Any]], config: Dict[str, Any]) -> bool:
     """Transfer recent data between S3s, multiple files.
 
     Args:
@@ -129,7 +129,7 @@ def send(files_to_transfer: List[Dict[str, Any]], config_file: str = None) -> bo
 
     """
     try:
-        clients = S3FileSystem.from_config_file(config_file)
+        clients = S3FileSystem.from_config_file(config)
     except EnvironmentError:
         logger.error("Environment not set properly, exiting", exc_info=True)
         return False

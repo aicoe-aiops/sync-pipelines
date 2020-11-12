@@ -24,6 +24,6 @@ setup(
     packages=find_packages(),
     package_data={"solgate": [os.path.join("utils", "*.txt"), os.path.join("utils", "*.html")]},
     include_package_data=True,
-    install_requires=["logstash-formatter>=0.5.17", "s3fs>=0.4", "jinja2>=2.11", "click"],
+    install_requires=["logstash-formatter>=0.5.17", "s3fs==0.4.*", "jinja2>=2.11", "click", "pyyaml"],
     entry_points={"console_scripts": ["solgate=solgate.cli:cli"]},
 )
