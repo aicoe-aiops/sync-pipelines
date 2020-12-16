@@ -51,7 +51,7 @@ def test_parse_timedelta_error():
         (dict(timedelta="4d"), datetime.today() - timedelta(days=5), 1),
     ],
 )
-@pytest.mark.parametrize("mocked_s3", ["same_client.ini"], indirect=["mocked_s3"])
+@pytest.mark.parametrize("mocked_s3", ["same_client.yaml"], indirect=["mocked_s3"])
 def test_list_source(mocked_s3, mocker, config, old_object_modified_date, found_objects):
     """Should list correct amount of files."""
     fs = mocked_s3[0]
@@ -62,7 +62,7 @@ def test_list_source(mocked_s3, mocker, config, old_object_modified_date, found_
     fs.s3fs.touch("BUCKET/old.csv")
     s3_backend.buckets["BUCKET"].keys["old.csv"].last_modified = old_object_modified_date
 
-    assert len(lookup.list_source()) == found_objects
+    assert len(lookup.list_source({})) == found_objects
 
 
 def test_list_source_invalid_config(mocker):
@@ -71,10 +71,10 @@ def test_list_source_invalid_config(mocker):
     mocker.patch("solgate.lookup.S3FileSystem.from_config_file", side_effect=EnvironmentError)
 
     with pytest.raises(SystemExit):
-        lookup.list_source()
+        lookup.list_source({})
 
 
-@pytest.mark.parametrize("mocked_s3", ["same_client.ini"], indirect=["mocked_s3"])
+@pytest.mark.parametrize("mocked_s3", ["same_client.yaml"], indirect=["mocked_s3"])
 def test_list_source_no_objects(mocked_s3, mocker):
     """Should raise when no files found."""
     fs = mocked_s3[0]
@@ -85,4 +85,4 @@ def test_list_source_no_objects(mocked_s3, mocker):
     s3_backend.buckets["BUCKET"].keys["old.csv"].last_modified = datetime(2020, 1, 1)
 
     with pytest.raises(SystemExit):
-        lookup.list_source()
+        lookup.list_source({})

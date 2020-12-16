@@ -1,0 +1,34 @@
+source:
+  aws_access_key_id: KEYID
+  aws_secret_access_key: ACCESSKEY
+  endpoint_url: https://s3.upshift.redhat.com
+  formatter: "{date}/{collection}.{ext}"
+  base_path: DH-PLAYPEN/storage/input
+
+destinations:
+  # This destination decompresses the data and stores them in "historic" folder
+  - aws_access_key_id: KEYID
+    aws_secret_access_key: ACCESSKEY
+    endpoint_url: https://s3.upshift.redhat.com
+    formatter: "{collection}/historic/{date}-{collection}.{ext}"
+    base_path: DH-PLAYPEN/storage/output
+    unpack: yes
+
+  #This destination decompresses the data and stores them in "latest" folder
+  - aws_access_key_id: KEYID
+    aws_secret_access_key: ACCESSKEY
+    endpoint_url: https://s3.upshift.redhat.com
+    formatter: "{collection}/latest/full_data.csv"
+    base_path: DH-PLAYPEN/storage/output
+    unpack: yes
+
+  #This destination stores the raw data as is
+  - aws_access_key_id: KEYID
+    aws_secret_access_key: ACCESSKEY
+    endpoint_url: https://s3.upshift.redhat.com
+    base_path: DH-PLAYPEN/storage/output
+
+alerts_smtp_server: smtp.corp.redhat.com
+alerts_from: solgate-alerts@redhat.com
+alerts_to: this-email-address-exists@redhat.com
+timedelta: 6h

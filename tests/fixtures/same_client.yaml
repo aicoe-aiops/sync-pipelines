@@ -1,0 +1,14 @@
+source:
+  aws_access_key_id: KEYID
+  aws_secret_access_key: ACCESSKEY
+  endpoint_url: https://s3.upshift.redhat.com
+  base_path: BUCKET
+  formatter: "{collection}/{rest}"
+
+destinations:
+  # This destination uses the same credentials, endpoint and bucket, therefore the same client instance is expected to be used
+  - aws_access_key_id: KEYID
+    aws_secret_access_key: ACCESSKEY
+    endpoint_url: https://s3.upshift.redhat.com
+    base_path: BUCKET
+    formatter: "{collection}-copy/{rest}"

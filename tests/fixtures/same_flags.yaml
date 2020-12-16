@@ -1,0 +1,14 @@
+source:
+  aws_access_key_id: KEYID
+  aws_secret_access_key: ACCESSKEY
+  endpoint_url: https://s3.upshift.redhat.com
+  base_path: BUCKET
+  formatter: "{collection}/{rest}"
+
+destinations:
+  # This destination map uses the same flags as the source despite using different client instance
+  - aws_access_key_id: KEYID
+    aws_secret_access_key: ACCESSKEY-DIFFERENT
+    endpoint_url: https://s3.upshift.redhat.com
+    base_path: BUCKET
+    formatter: "{collection}-copy/{rest}"

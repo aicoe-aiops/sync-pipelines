@@ -18,7 +18,7 @@ def fixture_dir():
 def mocked_s3(fixture_dir, request):
     """Yield S3FileSystem S3 clients with mocked backend."""
     with mock_s3():
-        s3fs_instances = S3FileSystem.from_config_file(fixture_dir / request.param)
+        s3fs_instances = S3FileSystem.from_config_file(dict(path=fixture_dir, filename=request.param))
         for instance in s3fs_instances:
             instance.s3fs = s3fs.S3FileSystem(key=instance.aws_access_key_id, secret=instance.aws_secret_access_key)
             instance.s3fs.s3.create_bucket(Bucket=instance._S3FileSystem__base_path.split("/")[0])

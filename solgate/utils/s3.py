@@ -3,14 +3,12 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
 from gzip import GzipFile
-from operator import attrgetter
-from typing import Callable, Dict, Optional, List, Any
+from typing import Any, Callable, Dict, List, Optional
 
 import s3fs  # type: ignore
 
-from .logging import logger
 from .io import read_s3_config
-
+from .logging import logger
 
 DEFAULT_ENDPOINTS = dict(source="https://s3.amazonaws.com/", destination="https://s3.upshift.redhat.com/")
 
@@ -40,7 +38,7 @@ class S3FileSystem:
 
         """
         self.name = name
-        self.is_source = name.lower().startswith("source")
+        self.is_source = name == "source"
         self.endpoint_url = endpoint_url
         if not self.endpoint_url:
             self.endpoint_url = DEFAULT_ENDPOINTS["source"] if self.is_source else DEFAULT_ENDPOINTS["destination"]
@@ -62,7 +60,7 @@ class S3FileSystem:
         )
 
     @classmethod
-    def from_config_file(cls, filename: str = None) -> List["S3FileSystem"]:
+    def from_config_file(cls, config: Dict[str, Any]) -> List["S3FileSystem"]:
         """Instantiate S3fs objects from config file.
 
         Create s3fs using credentials and paths from config files.
@@ -74,13 +72,11 @@ class S3FileSystem:
             Iterable["S3FileSystem"]: S3 file system clients.
 
         """
-        config = read_s3_config(filename)
-        clients = [cls(k, **v) for k, v in config]
-
-        with_source_attribute = [*filter(lambda c: c.is_source, clients)]
-        if len(with_source_attribute) != 1:
-            raise EnvironmentError("A single source is required")
-        return sorted(clients, key=attrgetter("is_source", "endpoint_url"), reverse=True)
+        try:
+            config_list = read_s3_config(**config)
+            return [cls(**config) for config in config_list]
+        except TypeError:
+            raise EnvironmentError("Config file not parseable.")
 
     def find(
         self,
