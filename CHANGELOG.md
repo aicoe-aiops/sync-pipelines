@@ -72,3 +72,18 @@
 * :pushpin: Automatic update of dependency pytest from 6.0.2 to 6.1.1 (#45)
 * :pushpin: Automatic update of dependency mypy from 0.782 to 0.790 (#44)
 * :pushpin: Automatic update of dependency mypy from 0.782 to 0.790 (#43)
+
+## Release 3.2.0 (2020-12-16T15:01:49)
+### Features
+* :arrow_up: Automatic update of dependencies by kebechet.
+* Adjust manifests to yaml config files
+* Change config format to yaml and allow for external credential files
+* Bump cryptography from 3.1.1 to 3.2
+* Update solgate-report documentation
+* Add option to specify alert from/to/smtp via cli args or env variables
+* Fix s/key/relpath/ in a testcase
+### Improvements
+* Update documentation with example config and dev section
+* Adjust test suite to the yaml config
+### Automatic Updates
+* :pushpin: Automatic update of dependency pytest from 6.1.1 to 6.1.2 (#51)
