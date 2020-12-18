@@ -1,8 +1,0 @@
-apiVersion: argoproj.io/v1alpha1
-kind: EventSource
-metadata:
-  name: solgate-calendar
-spec:
-  calendar:
-    dev-instance:
-      schedule: "0 0 * * *"

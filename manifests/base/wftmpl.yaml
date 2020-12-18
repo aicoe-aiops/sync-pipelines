@@ -3,6 +3,8 @@ kind: WorkflowTemplate
 metadata:
   name: solgate
 spec:
+  entrypoint: entrypoint
+  onExit: exit-handler
   templates:
     - name: entrypoint
       steps:
@@ -114,3 +116,12 @@ spec:
         - name: config
           secret:
             secretName: "{{workflow.parameters.config}}"
+
+  volumeClaimTemplates:
+    - metadata:
+        name: workdir
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
