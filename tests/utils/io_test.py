@@ -122,7 +122,7 @@ def test__read_yaml_file_empty(mocker):
     """Should raise exception when config file is empty."""
     mocked_open = mocker.mock_open()
     mocker.patch("builtins.open", mocked_open)
-    with pytest.raises(EnvironmentError):
+    with pytest.raises(IOError):
         io._read_yaml_file("")
 
 

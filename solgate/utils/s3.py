@@ -76,7 +76,7 @@ class S3FileSystem:
             config_list = read_s3_config(**config)
             return [cls(**config) for config in config_list]
         except TypeError:
-            raise EnvironmentError("Config file not parseable.")
+            raise ValueError("Config file not parseable.")
 
     def find(
         self,

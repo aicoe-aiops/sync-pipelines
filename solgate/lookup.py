@@ -50,7 +50,7 @@ def parse_timedelta(timestr: str) -> timedelta:
     time_params = {k: int(v) for k, v in parts.groupdict().items() if v}  # type: ignore
 
     if not time_params:
-        raise EnvironmentError("Timedelta format is not valid")
+        raise ValueError("Timedelta format is not valid")
 
     return timedelta(**time_params)
 
@@ -71,18 +71,15 @@ def list_source(config: Dict[str, Any]) -> List[Dict[str, Any]]:
 
     """
     general_config = read_general_config(**config)
-    try:
-        oldest_date = datetime.now(timezone.utc) - parse_timedelta(general_config.get("timedelta", DEFAULT_TIMEDELTA))
-        s3 = S3FileSystem.from_config_file(config)[0]
-    except EnvironmentError:
-        logger.error("Environment not set properly, exiting", exc_info=True)
-        exit(1)
+
+    oldest_date = datetime.now(timezone.utc) - parse_timedelta(general_config.get("timedelta", DEFAULT_TIMEDELTA))
+    s3 = S3FileSystem.from_config_file(config)[0]
+
     constraint = lambda meta: meta["LastModified"] >= oldest_date  # noqa: E731
     located_files = s3.find(constraint=constraint)
 
     if not located_files:
-        logger.error("No files found in given TIMEDELTA", dict(files=[]))
-        exit(1)
+        raise FileNotFoundError("No files found in given TIMEDELTA")
     logger.info("Files found", dict(files=list(located_files.keys())))
 
     # Select a metadata subset, so we don't clutter the workflow

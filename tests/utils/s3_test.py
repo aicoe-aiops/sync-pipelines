@@ -33,7 +33,7 @@ def test_s3_file_system_init():
 
 def test_s3_file_system_from_config_file_multiple_sources(fixture_dir):
     """Should not allow multiple sources in a config file."""
-    with pytest.raises(EnvironmentError):
+    with pytest.raises(ValueError):
         s3.S3FileSystem.from_config_file(dict(filename="multiple_sources.yaml", path=fixture_dir))
 
 

@@ -20,28 +20,38 @@ def test_send(mocker, file_list, mocked_solgate_s3_file_system):
         mocked_transfer_single_file.assert_any_call(f["relpath"], [mocked_solgate_s3_file_system])
 
 
-@pytest.mark.parametrize("file_list", ([], [dict()], [dict(not_a_key="a/b/file.csv")], [dict(key="file.csv"), dict()]))
-def test_send_no_key(mocker, file_list, mocked_solgate_s3_file_system):
+@pytest.mark.parametrize(
+    "file_list,exception",
+    (
+        ([], FileNotFoundError),
+        ([dict()], IOError),
+        ([dict(not_a_key="a/b/file.csv")], IOError),
+        ([dict(key="file.csv"), dict()], IOError),
+    ),
+)
+def test_send_no_key(mocker, file_list, mocked_solgate_s3_file_system, exception):
     """Should fail to transfer files where the key is missing."""
     mocker.patch("solgate.transfer._transfer_single_file")
 
-    assert transfer.send(file_list, {}) is False
+    with pytest.raises(exception):
+        transfer.send(file_list, {})
 
 
 def test_send_not_configured_properly(mocker):
     """Should fail without config file."""
     mocker.patch("builtins.open", side_effect=FileNotFoundError)
 
-    assert transfer.send([], dict(filename="this.yaml", path=Path("/doesnt/exist"))) is False
+    with pytest.raises(FileNotFoundError):
+        transfer.send([], dict(filename="this.yaml", path=Path("/doesnt/exist")))
 
 
 def test_send_unable_to_transfer(mocker, mocked_solgate_s3_file_system):
     """Should log failures."""
     mocker.patch("solgate.transfer._transfer_single_file", return_value=False)
 
-    spy_send = mocker.spy(transfer.logger, "error")
-    assert transfer.send([dict(relpath="a/b/file.csv")], {}) is False
-    spy_send.assert_called_with(mocker.ANY, dict(failed_files=[dict(relpath="a/b/file.csv")]))
+    with pytest.raises(IOError) as e:
+        transfer.send([dict(relpath="a/b/file.csv")], {})
+        assert e.args[1] == dict(failed_files=[dict(relpath="a/b/file.csv")])
 
 
 @pytest.mark.parametrize("mocked_s3", ["sample_config.yaml"], indirect=["mocked_s3"])
