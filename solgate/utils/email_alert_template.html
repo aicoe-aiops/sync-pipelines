@@ -13,6 +13,7 @@
             <tr><td>Namespace</td><td>{{ namespace }}</td></tr>
             <tr><td>Status</td><td>{{ status }}</td></tr>
             <tr><td>Created</td><td>{{ timestamp }}</td></tr>
+            <tr><td>Failure reason</td><td>{{ reason|join(', ') }}</td></tr>
         </table>
         <p><b>Failures:</b></p>
         {%- if not failures %}

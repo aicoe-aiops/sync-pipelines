@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import lru_cache, partial
 from string import Formatter
-from typing import Any, Dict, Iterator
+from typing import Any, Dict, Iterator, Union
 
 load = partial(yaml_load, Loader=Loader)
 
@@ -67,11 +67,11 @@ def deserialize(filename: str) -> Any:
         return json.load(f)
 
 
-def _read_yaml_file(filename) -> Dict[str, Any]:
+def _read_yaml_file(filename: Union[str, Path]) -> Dict[str, Any]:
     """Read a file.
 
     Args:
-        filename (str, optional): Configuration file location. Defaults to None.
+        filename (str): Configuration file location. Defaults to None.
 
     Returns:
         Dict[str, Any]: Pythonic representation of the config file.

@@ -6,7 +6,7 @@ from pathlib import Path
 import click
 
 from solgate import list_source, send, send_report, __version__ as version
-from .utils import serialize, logger, deserialize, read_general_config
+from .utils import serialize, logger, deserialize, read_general_config, NoFilesToSyncError, FilesFailedToSyncError
 from .report import DEFAULT_RECIPIENT, DEFAULT_SENDER, DEFAULT_SMTP_SERVER
 
 
@@ -54,18 +54,23 @@ def _send(ctx, key: str = None, listing_file: str = None):
     elif key:
         files_to_transfer = [dict(relpath=key)]
     else:
-        logger.error("Nothing to send through solgate.")
-        exit(1)
+        files_to_transfer = []
 
     try:
-        success = send(files_to_transfer, ctx.obj["config"])
+        send(files_to_transfer, ctx.obj["config"])
+    except FileNotFoundError as e:
+        logger.error(e, exc_info=True)
+        raise NoFilesToSyncError(*e.args)
+    except ValueError as e:
+        logger.error(e, exc_info=True)
+        raise click.BadParameter("Environment not configured properly")
+    except IOError as e:
+        logger.error(e, exc_info=True)
+        raise FilesFailedToSyncError(*e.args)
     except:  # noqa: E722
         logger.error("Unexpected error during transfer", exc_info=True)
-        exit(1)
+        raise click.ClickException("Unexpected error")
 
-    if not success:
-        logger.error("Failed to perform a full sync")
-        exit(1)
     logger.info("Successfully synced all files to all destinations")
 
 
@@ -83,9 +88,15 @@ def _list(ctx, output: str = None):
             serialize(files, output)
         else:
             click.echo(files)
+    except ValueError as e:
+        logger.error(e, exc_info=True)
+        raise click.BadParameter("Environment not configured properly")
+    except FileNotFoundError as e:
+        logger.error(e, exc_info=True)
+        raise NoFilesToSyncError(*e.args)
     except:  # noqa: F401
         logger.error("Unexpected error", exc_info=True)
-        exit(1)
+        raise click.ClickException("Unexpected error")
 
 
 @cli.command("report")
@@ -169,7 +180,10 @@ def _report(
 
     context = dict(name=name, namespace=namespace, status=status, timestamp=timestamp, host=host)
 
-    send_report(context, failures, config)
+    try:
+        send_report(context, failures, config)
+    except ValueError as e:
+        raise click.BadParameter(*e.args)
 
 
 @cli.command("version")

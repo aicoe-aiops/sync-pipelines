@@ -5,10 +5,11 @@ from email.message import EmailMessage
 from json import loads
 from typing import Dict, Union, Any
 from pathlib import Path
+import re
 
 from jinja2 import Template
 
-from .utils import logger
+from .utils import logger, EXIT_CODES
 
 TEMPLATE_HTML = Path(__file__).absolute().parent / "utils" / "email_alert_template.html"
 TEMPLATE_PLAINTEXT = Path(__file__).absolute().parent / "utils" / "email_alert_template.txt"
@@ -68,6 +69,24 @@ def decode_failures(failures: str) -> list:
         raise ValueError(e)
 
 
+def parse_error_reason(failures: list) -> list:
+    """Parse error reason message from the failed nodes messages.
+
+    Args:
+        failures (list): List of failed nodes
+
+    Returns:
+        list: List of error reason messages.
+
+    """
+    regex = r"failed with exit code (?P<exit_code>\d+)"
+
+    messages = [re.match(regex, f.get("message", "")) for f in failures]
+    exit_codes = map(lambda m: int(m.groupdict().get("exit_code", 1)), filter(None, messages))
+
+    return [EXIT_CODES[e].msg or f"Unknown reason for exit code '{e}'" for e in exit_codes]
+
+
 def send_report(context: Dict[str, Any], failures: str, config: Dict[str, str]) -> None:
     """Send an email notification.
 
@@ -86,13 +105,15 @@ def send_report(context: Dict[str, Any], failures: str, config: Dict[str, str]) 
     context = context.copy()
     if not context.keys() == set(["name", "namespace", "status", "timestamp", "host"]) or not all(context.values()):
         logger.error("Alert content is not passed properly")
-        exit(1)
+        raise ValueError("Alert content is not passed properly")
 
     try:
         context["failures"] = decode_failures(failures)
     except ValueError:
         logger.error("Unable to parse workflow failures", exc_info=True)
         context["failures"] = []
+
+    context["reason"] = parse_error_reason(context["failures"])
 
     logger.info("Sending email alert")
 

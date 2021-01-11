@@ -51,13 +51,16 @@ def test_list(run, mocker, cli_args, func_args, file_output):
         assert "['list', 'of', 'files']\n" in result.output
 
 
-def test_list_negative(run, mocker):
+@pytest.mark.parametrize(
+    "side_effect,errno", [(RuntimeError, 1), (ValueError("msg"), 2), (FileNotFoundError("msg"), 3),],
+)
+def test_list_negative(run, mocker, side_effect, errno):
     """Should fail on list command."""
-    mocker.patch("solgate.cli.list_source", side_effect=EnvironmentError)
+    mocker.patch("solgate.cli.list_source", side_effect=side_effect)
 
     result = run("list")
 
-    assert result.exit_code == 1
+    assert result.exit_code == errno
 
 
 @pytest.mark.parametrize(
@@ -80,20 +83,21 @@ def test_send(run, mocker, cli_args, func_args):
 
 
 @pytest.mark.parametrize(
-    "kwargs,cli_args",
+    "side_effect,cli_args,errno",
     [
-        (dict(side_effect=RuntimeError), ["send", "key"]),
-        (dict(return_value=False), ["send", "key"]),
-        (dict(), ["send"]),
+        (RuntimeError, ["send", "key"], 1),
+        (ValueError("msg"), ["send"], 2),
+        (FileNotFoundError("msg"), ["send", "key"], 3),
+        (IOError("msg"), ["send", "key"], 4),
     ],
 )
-def test_send_negative(run, mocker, kwargs, cli_args):
+def test_send_negative(run, mocker, side_effect, cli_args, errno):
     """Should fail on sync failure."""
-    mocker.patch("solgate.cli.send", **kwargs)
+    mocker.patch("solgate.cli.send", side_effect=side_effect)
 
     result = run(cli_args)
 
-    assert result.exit_code == 1
+    assert result.exit_code == errno
 
 
 context_keys = ["name", "namespace", "status", "host", "timestamp"]
@@ -178,3 +182,12 @@ def test_report(run, mocker, cli_args, func_args, fixture_dir, env):
         logger_spy.assert_called_once_with(
             "Config file is not present or not valid, alerting to/from default email address."
         )
+
+
+def test_report_negative(run, mocker):
+    """Should fail on list command."""
+    mocker.patch("solgate.cli.list_source", side_effects=ValueError("msg"))
+
+    result = run("report")
+
+    assert result.exit_code == 2

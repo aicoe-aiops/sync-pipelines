@@ -4,6 +4,7 @@ from json import dumps
 import pytest
 
 from solgate import report
+from solgate.utils import EXIT_CODES
 
 
 @pytest.fixture
@@ -65,7 +66,7 @@ def test_send_report_custom_config(context, smtp):
 
 def test_send_report_no_context(smtp):
     """Should fail to send empty message."""
-    with pytest.raises(SystemExit):
+    with pytest.raises(ValueError):
         report.send_report({}, "", {})
 
 
@@ -84,6 +85,7 @@ def test_send_report_with_failures(context, smtp):
 
     for p in smtp.get_sent_message().iter_parts():
         content = p.get_content()
+        assert EXIT_CODES[1].msg in content
         assert "Failures:" in content
         assert all([v in content for v in failure.values()])
 
@@ -94,6 +96,22 @@ def test_send_report_with_failures(context, smtp):
 def test_decode_failures(input, output):
     """Should decode escaped serialized json."""
     assert report.decode_failures(input) == output
+
+
+@pytest.mark.parametrize(
+    "messages,result",
+    [
+        (["child 'solgate-5q9kf-657546095' failed", "child 'solgate-5q9kf-657546094' failed"], []),
+        (["child 'solgate-5q9kf-657546095' failed", "failed with exit code 1"], [EXIT_CODES[1]]),
+        (["failed with exit code 2"], [EXIT_CODES[2]]),
+        (["failed with exit code 3"], [EXIT_CODES[3]]),
+        (["failed with exit code 4"], [EXIT_CODES[4]]),
+        (["failed with exit code 2", "failed with exit code 4"], [EXIT_CODES[2], EXIT_CODES[4]]),
+    ],
+)
+def test_parse_failure_reasons(context, smtp, messages, result):
+    """Should parse failure reason from exit codes."""
+    assert report.parse_error_reason([dict(message=m) for m in messages]) == [r.msg for r in result]
 
 
 @pytest.mark.parametrize("input", [None, "", '""', '"[', '"\\"this is a string\\""', '"2"'])

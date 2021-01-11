@@ -39,7 +39,7 @@ def test_parse_timedelta(input, output):
 
 def test_parse_timedelta_error():
     """Should raise when unable to parse."""
-    with pytest.raises(EnvironmentError):
+    with pytest.raises(ValueError):
         lookup.parse_timedelta("1y")
 
 
@@ -68,9 +68,9 @@ def test_list_source(mocked_s3, mocker, config, old_object_modified_date, found_
 def test_list_source_invalid_config(mocker):
     """Should raise when client can't be instantiated."""
     mocker.patch("solgate.lookup.read_general_config", return_value=dict())
-    mocker.patch("solgate.lookup.S3FileSystem.from_config_file", side_effect=EnvironmentError)
+    mocker.patch("solgate.lookup.S3FileSystem.from_config_file", side_effect=ValueError)
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(ValueError):
         lookup.list_source({})
 
 
@@ -84,5 +84,5 @@ def test_list_source_no_objects(mocked_s3, mocker):
     fs.s3fs.touch("BUCKET/old.csv")
     s3_backend.buckets["BUCKET"].keys["old.csv"].last_modified = datetime(2020, 1, 1)
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(FileNotFoundError):
         lookup.list_source({})

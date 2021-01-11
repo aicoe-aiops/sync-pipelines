@@ -127,16 +127,19 @@ def send(files_to_transfer: List[Dict[str, Any]], config: Dict[str, Any]) -> boo
     Returns:
         bool: True if success
 
+    Raises:
+        ValueError: Raised when local environment is not set properly
+        FileNotFoundError: Raised when there are no files to be transfered (noop)
+        IOError: Raised when some files failed to transfer
+
     """
     try:
         clients = S3FileSystem.from_config_file(config)
-    except EnvironmentError:
-        logger.error("Environment not set properly, exiting", exc_info=True)
-        return False
+    except ValueError:
+        raise
 
     if not files_to_transfer:
-        logger.error("No files to transfer")
-        return False
+        raise FileNotFoundError("No files to transfer")
 
     failed = []
     for source_file in files_to_transfer:
@@ -148,6 +151,5 @@ def send(files_to_transfer: List[Dict[str, Any]], config: Dict[str, Any]) -> boo
             failed.append(source_file)
 
     if failed:
-        logger.error("Some files failed to be transferred", dict(failed_files=failed))
-        return False
+        raise IOError("Some files failed to be transferred", dict(failed_files=failed))
     return True

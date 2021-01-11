@@ -1,9 +1,10 @@
 Argo workflow has failed!
 
-Name:         {{ name }}
-Namespace:    {{ namespace }}
-Status:       {{ status }}
-Created:      {{ timestamp }}
+Name:           {{ name }}
+Namespace:      {{ namespace }}
+Status:         {{ status }}
+Created:        {{ timestamp }}
+Failure reason: {{ reason|join(', ') }}
 
 Failures:
 {%- if not failures %}
