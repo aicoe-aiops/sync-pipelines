@@ -12,3 +12,4 @@ resources:
   - ../../base
   - ./mms
   - ./usir
+  - ./usir-stage
