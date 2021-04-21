@@ -33,11 +33,13 @@ def copy(files: List[S3File]) -> None:
             logger.info("Matching flags, files can be copied one to one.", log_args)
             with a.client.open(a.key, "rb") as i, b.client.open(b.key, "wb") as o:
                 shutil.copyfileobj(i, o)
+                o.flush()
             continue
 
         logger.info("Flags don't match, copying from source", log_args)
         with files[0].client.open(files[0].key, "rb", **b.client.flags) as i, b.client.open(b.key, "wb") as o:
             shutil.copyfileobj(i, o)
+            o.flush()
 
 
 def calc_s3_files(source_path: str, clients: List[S3FileSystem]) -> Iterator[S3File]:
