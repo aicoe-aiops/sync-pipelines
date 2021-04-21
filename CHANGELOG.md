@@ -87,3 +87,18 @@
 * Adjust test suite to the yaml config
 ### Automatic Updates
 * :pushpin: Automatic update of dependency pytest from 6.1.1 to 6.1.2 (#51)
+
+## Release 3.3.0 (2021-04-21T10:45:48)
+### Features
+* fix: Attept to flush remote FS
+* :arrow_up: Automatic update of dependencies by Kebechet (#75)
+* feat: Add USIR stage sync pipeline (#74)
+* :arrow_up: Automatic update of dependencies by Kebechet (#73)
+* Bump cryptography from 3.3.1 to 3.3.2
+* :arrow_up: Automatic update of dependencies by Kebechet (#70)
+* :arrow_up: Automatic update of dependencies by kebechet. (#66)
+* :arrow_up: Automatic update of dependencies by kebechet.
+* fix: Make MMS pipeline overlap the time constrain
+* feat: Remove Argo Events usage and add prod overlays
+### Bug Fixes
+* feat: Enrich reporting with error codes for different failure cases
