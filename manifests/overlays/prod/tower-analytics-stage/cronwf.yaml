@@ -1,0 +1,15 @@
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata:
+  generateName: solgate-tower-analytics-stage
+  name: solgate-tower-analytics-stage
+spec:
+  schedule: "0 8 * * *"
+  concurrencyPolicy: "Replace"
+  workflowSpec:
+    arguments:
+      parameters:
+        - name: config
+          value: solgate-tower-analytics-stage
+    workflowTemplateRef:
+      name: solgate
