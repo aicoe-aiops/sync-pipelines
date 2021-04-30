@@ -40,6 +40,33 @@ spec:
         - name: config
           secret:
             secretName: "{{workflow.parameters.config}}"
+      metrics:
+        prometheus:
+          - name: solgate_lookup_exit_code
+            labels:
+              - key: instance
+                value: "{{workflow.parameters.config}}"
+              - key: exit_code
+                value: "{{exitCode}}"
+            help: Exit code counter of lookup step by Solgate instance
+            counter:
+              value: "1"
+          - name: solgate_lookup_duration
+            labels:
+              - key: instance
+                value: "{{workflow.parameters.config}}"
+            help: Duration gauge of lookup step by Solgate instance
+            gauge:
+              value: "{{duration}}"
+          - name: solgate_lookup_count
+            labels:
+              - key: instance
+                value: "{{workflow.parameters.config}}"
+              - key: status
+                value: "{{status}}"
+            help: Status counter of lookup step by Solgate instance
+            counter:
+              value: "1"
 
     - name: sync
       container:
@@ -62,6 +89,33 @@ spec:
         - name: config
           secret:
             secretName: "{{workflow.parameters.config}}"
+      metrics:
+        prometheus:
+          - name: solgate_sync_exit_code
+            labels:
+              - key: instance
+                value: "{{workflow.parameters.config}}"
+              - key: exit_code
+                value: "{{exitCode}}"
+            help: Exit code counter of sync step by Solgate instance
+            counter:
+              value: "1"
+          - name: solgate_sync_duration
+            labels:
+              - key: instance
+                value: "{{workflow.parameters.config}}"
+            help: Duration gauge of sync step by Solgate instance
+            gauge:
+              value: "{{duration}}"
+          - name: solgate_sync_count
+            labels:
+              - key: instance
+                value: "{{workflow.parameters.config}}"
+              - key: status
+                value: "{{status}}"
+            help: Status counter of sync step by Solgate instance
+            counter:
+              value: "1"
 
     - name: failure-handler
       steps:
@@ -116,6 +170,33 @@ spec:
         - name: config
           secret:
             secretName: "{{workflow.parameters.config}}"
+      metrics:
+        prometheus:
+          - name: solgate_notify_exit_code
+            labels:
+              - key: instance
+                value: "{{workflow.parameters.config}}"
+              - key: exit_code
+                value: "{{exitCode}}"
+            help: Exit code counter of notify step by Solgate instance
+            counter:
+              value: "1"
+          - name: solgate_notify_duration
+            labels:
+              - key: instance
+                value: "{{workflow.parameters.config}}"
+            help: Duration gauge of notify step by Solgate instance
+            gauge:
+              value: "{{duration}}"
+          - name: solgate_notify_count
+            labels:
+              - key: instance
+                value: "{{workflow.parameters.config}}"
+              - key: status
+                value: "{{status}}"
+            help: Status counter of notify step by Solgate instance
+            counter:
+              value: "1"
 
   volumeClaimTemplates:
     - metadata:
@@ -125,3 +206,22 @@ spec:
         resources:
           requests:
             storage: 1Gi
+
+  metrics:
+    prometheus:
+      - name: solgate_count
+        labels:
+          - key: instance
+            value: "{{workflow.parameters.config}}"
+          - key: status
+            value: "{{workflow.status}}"
+        help: Status counter by Solgate instance
+        counter:
+          value: "1"
+      - name: solgate_duration
+        labels:
+          - key: instance
+            value: "{{workflow.parameters.config}}"
+        help: Duration gauge by Solgate instance
+        gauge:
+          value: "{{workflow.duration}}"
