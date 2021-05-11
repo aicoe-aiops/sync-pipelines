@@ -226,7 +226,7 @@ def test_serialize(mocker):
     mocked_open.assert_called_once_with("file.json", "a")
     calls = mocked_open.return_value.__enter__.return_value.write.call_args_list
     args = "".join(c.args[0] for c in calls)
-    assert args == '{"a": "b"}'
+    assert args == '{"a": "b"}\n'
 
 
 @pytest.mark.parametrize(

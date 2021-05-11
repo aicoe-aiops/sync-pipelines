@@ -51,6 +51,7 @@ def serialize(obj: Any, filename: str) -> None:
     """
     with open(filename, "a") as f:
         json.dump(obj, f, cls=CustomEncoder)
+        f.write("\n")
 
 
 def deserialize(filename: str) -> Any:

@@ -84,11 +84,7 @@ class S3FileSystem:
             raise ValueError("Config file not parseable.")
 
     def find(
-        self,
-        path: str = "",
-        constraint: Callable = lambda x: True,
-        maxdepth: Optional[int] = None,
-        withdirs: bool = False,
+        self, path: str = "", constraint: Callable = lambda x: True, maxdepth: Optional[int] = None,
     ) -> Generator[Tuple[str, Dict[str, str]], None, None]:
         """List files below path.
 
@@ -110,18 +106,13 @@ class S3FileSystem:
         path = f"{self.__base_path}/{path}" if path else self.__base_path
 
         # Fix Ceph reporting folders as "type"="file", check for size instead
-        if not withdirs:
-            _constraint = constraint
-
-            constraint = lambda meta: meta.get("type", "").lower() != "directory" and _constraint(meta)  # noqa: E731
+        _constraint = constraint
+        constraint = lambda meta: meta.get("type", "").lower() != "directory" and _constraint(meta)  # noqa: E731
 
         for _, dirs, files in self.s3fs.walk(path, maxdepth, detail=True):
-            if withdirs:
-                files.update(dirs)
-
-            for name, info in files.items():
-                if constraint(info):
-                    yield name.replace(f"{self.__base_path}/", ""), info
+            for _, info in files.items():
+                if constraint(info) and self.s3fs.isfile(info["Key"]):
+                    yield info["Key"].replace(f"{self.__base_path}/", ""), info
 
     @contextmanager
     def open(self, path: str, mode: str = "rb", **kwargs: Dict[Any, Any]):

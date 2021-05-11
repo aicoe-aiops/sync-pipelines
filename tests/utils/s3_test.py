@@ -97,8 +97,7 @@ def test_s3_file_system_copy(dest_base, result, mocked_s3):
     [
         pytest.param({}, 4, id="All CSV objects"),
         pytest.param(dict(path="folder1"), 1, id="All CSV objects in folder1"),
-        pytest.param(dict(withdirs=True), 8, id="All objects including all folders"),
-        pytest.param(dict(maxdepth=1, withdirs=True), 3, id="All objects including all folders in root"),
+        pytest.param(dict(maxdepth=1), 1, id="All objects directly in root"),
         pytest.param(dict(maxdepth=2), 2, id="All CSV objects in root + 1st level folder"),
         (dict(constraint=lambda m: m["LastModified"] == datetime(2020, 1, 1, tzinfo=timezone.utc)), 1),
     ],
