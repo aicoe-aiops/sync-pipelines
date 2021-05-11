@@ -37,6 +37,15 @@ def test_send_no_key(mocker, file_list, mocked_solgate_s3_file_system, exception
         transfer.send(file_list, {})
 
 
+def test_send_no_client(mocker):
+    """Should re-raise exception if config is not parseable."""
+    mocked_s3_fs = mocker.patch("solgate.transfer.S3FileSystem")
+    mocked_s3_fs.from_config_file.side_effect = ValueError
+
+    with pytest.raises(ValueError):
+        transfer.send([], {})
+
+
 def test_send_not_configured_properly(mocker):
     """Should fail without config file."""
     mocker.patch("builtins.open", side_effect=FileNotFoundError)

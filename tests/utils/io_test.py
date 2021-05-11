@@ -182,7 +182,9 @@ def test__read_creds_file_raises(mocker, kind, call_count):
 )
 def test_read_s3_config(fixture_dir, config_file, number_of_destinations):
     """Should parse s3 sections of the config."""
-    s3_sections = {section["name"]: section for section in io.read_s3_config(config_file, fixture_dir)}
+    s3_sections = {
+        section["name"]: section for section in io.read_s3_config(config_file, fixture_dir, ("source", "destination"))
+    }
 
     assert len(s3_sections.items()) == number_of_destinations + 1
     assert "source" in s3_sections.keys()

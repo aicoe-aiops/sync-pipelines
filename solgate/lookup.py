@@ -4,7 +4,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
-from .utils import S3FileSystem, logger, read_general_config
+from .utils import S3FileSystem, S3ConfigSelector, logger, read_general_config
 
 KEYS = ("lastmodified", "etag", "key", "type", "size")
 DEFAULT_TIMEDELTA = "1d"
@@ -73,7 +73,7 @@ def list_source(config: Dict[str, Any]) -> List[Dict[str, Any]]:
     general_config = read_general_config(**config)
 
     oldest_date = datetime.now(timezone.utc) - parse_timedelta(general_config.get("timedelta", DEFAULT_TIMEDELTA))
-    s3 = S3FileSystem.from_config_file(config)[0]
+    s3 = S3FileSystem.from_config_file(config, S3ConfigSelector["source"])[0]
 
     constraint = lambda meta: meta["LastModified"] >= oldest_date  # noqa: E731
 

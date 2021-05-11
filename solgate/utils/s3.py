@@ -3,7 +3,7 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
 from gzip import GzipFile
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Iterable
 
 import s3fs  # type: ignore
 
@@ -11,6 +11,9 @@ from .io import read_s3_config
 from .logging import logger
 
 DEFAULT_ENDPOINTS = dict(source="https://s3.amazonaws.com/", destination="https://s3.upshift.redhat.com/")
+
+
+S3ConfigSelector = {"source": ("source",), "destination": ("destination",), "all": ("source", "destination")}
 
 
 class S3FileSystem:
@@ -60,7 +63,9 @@ class S3FileSystem:
         )
 
     @classmethod
-    def from_config_file(cls, config: Dict[str, Any]) -> List["S3FileSystem"]:
+    def from_config_file(
+        cls, config: Dict[str, Any], selector: Iterable[str] = S3ConfigSelector["all"]
+    ) -> List["S3FileSystem"]:
         """Instantiate S3fs objects from config file.
 
         Create s3fs using credentials and paths from config files.
@@ -73,7 +78,7 @@ class S3FileSystem:
 
         """
         try:
-            config_list = read_s3_config(**config)
+            config_list = read_s3_config(**config, selector=selector)
             return [cls(**config) for config in config_list]
         except TypeError:
             raise ValueError("Config file not parseable.")
@@ -110,9 +115,13 @@ class S3FileSystem:
 
             constraint = lambda meta: meta.get("type", "").lower() != "directory" and _constraint(meta)  # noqa: E731
 
-        for k, v in self.s3fs.find(path, maxdepth, withdirs, detail=True).items():
-            if constraint(v):
-                yield k.replace(f"{self.__base_path}/", ""), v
+        for _, dirs, files in self.s3fs.walk(path, maxdepth, detail=True):
+            if withdirs:
+                files.update(dirs)
+
+            for name, info in files.items():
+                if constraint(info):
+                    yield name.replace(f"{self.__base_path}/", ""), info
 
     @contextmanager
     def open(self, path: str, mode: str = "rb", **kwargs: Dict[Any, Any]):
