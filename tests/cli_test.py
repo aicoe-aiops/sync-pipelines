@@ -29,9 +29,10 @@ def context(**kwargs):
 @pytest.mark.parametrize(
     "cli_args,func_args,file_output",
     [
-        (["list"], [context()], False),
-        (["-c", ".", "list"], [context(path=Path("."))], False),
-        (["list", "-o", "output.json"], [context()], True),
+        (["list"], [context(), False], False),
+        (["list", "--backfill"], [context(), True], False),
+        (["-c", ".", "list"], [context(path=Path(".")), False], False),
+        (["list", "-o", "output.json"], [context(), False], True),
     ],
 )
 def test_list(run, mocker, cli_args, func_args, file_output):
