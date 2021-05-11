@@ -55,7 +55,7 @@ def parse_timedelta(timestr: str) -> timedelta:
     return timedelta(**time_params)
 
 
-def list_source(config: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:
+def list_source(config: Dict[str, Any], backfill=False) -> Generator[Dict[str, Any], None, None]:
     """Lookup recently modifined files.
 
     List files on S3 and filter those that were modified in recent history.
@@ -75,7 +75,10 @@ def list_source(config: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]
     oldest_date = datetime.now(timezone.utc) - parse_timedelta(general_config.get("timedelta", DEFAULT_TIMEDELTA))
     s3 = S3FileSystem.from_config_file(config, S3ConfigSelector["source"])[0]
 
-    constraint = lambda meta: meta["LastModified"] >= oldest_date  # noqa: E731
+    if backfill:
+        constraint = lambda _: True  # noqa: E731
+    else:
+        constraint = lambda meta: meta["LastModified"] >= oldest_date  # noqa: E731
 
     is_files = False
     # Select a metadata subset, so we don't clutter the workflow

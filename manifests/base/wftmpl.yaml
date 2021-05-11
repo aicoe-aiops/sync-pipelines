@@ -3,6 +3,10 @@ kind: WorkflowTemplate
 metadata:
   name: solgate
 spec:
+  arguments:
+    parameters:
+      - name: additional-lookup-params
+        value: ""
   entrypoint: entrypoint
   onExit: exit-handler
   templates:
@@ -23,7 +27,10 @@ spec:
       container:
         image: solgate:latest
         command: ["solgate", "list"]
-        args: ["-o", "/mnt/vol/filelist.json"]
+        args:
+          - "-o"
+          - "/mnt/vol/filelist.json"
+          - "{{workflow.parameters.additional-lookup-params}}"
         resources:
           limits:
             cpu: 500m

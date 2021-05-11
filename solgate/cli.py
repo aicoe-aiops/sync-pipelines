@@ -76,14 +76,15 @@ def _send(ctx, key: str = None, listing_file: str = None):
 
 @cli.command("list")
 @click.option("-o", "--output", type=click.Path(exists=False), help="Output to a file instead of stdout.")
+@click.option("--backfill", is_flag=True, help="Ignore TIMEDELTA constrain and run a backfill lookup.")
 @click.pass_context
-def _list(ctx, output: str = None):
+def _list(ctx, output: str = None, backfill: bool = False):
     """Query the source bucket for files ready to be transferred.
 
     Only files newer than `timedelta` config value (added or modified) are listed.
     """
     try:
-        for file in list_source(ctx.obj["config"]):
+        for file in list_source(ctx.obj["config"], backfill):
             if output:
                 serialize(file, output)
             else:

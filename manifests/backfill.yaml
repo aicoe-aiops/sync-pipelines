@@ -1,0 +1,13 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: solgate-backfill-
+spec:
+  arguments:
+    parameters:
+      - name: config
+        value:
+      - name: additional-lookup-params
+        value: --backfill
+  workflowTemplateRef:
+    name: solgate
