@@ -102,3 +102,13 @@
 * feat: Remove Argo Events usage and add prod overlays
 ### Bug Fixes
 * feat: Enrich reporting with error codes for different failure cases
+
+## Release 3.4.0 (2021-05-11T19:15:28)
+### Features
+* feat: Add a backfill flag (#86)
+* :arrow_up: Automatic update of dependencies by Kebechet
+* :arrow_up: Automatic update of dependencies by Kebechet (#84)
+* Make S3 remote object listing dynamic via generators (#83)
+* fix: Enable tower analytics sync (#81)
+* :arrow_up: Automatic update of dependencies by Kebechet (#80)
+* feat: Add Tower Analytics stage/prod sync pipelines (#79)
