@@ -3,7 +3,7 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
 from gzip import GzipFile
-from typing import Any, Callable, Dict, List, Optional, Iterable
+from typing import Any, Callable, Dict, List, Optional, Iterable, Generator, Tuple
 
 import s3fs  # type: ignore
 
@@ -78,7 +78,7 @@ class S3FileSystem:
 
         """
         try:
-            config_list = read_s3_config(**config, selector=selector)
+            config_list = read_s3_config(selector=selector, **config)
             return [cls(**config) for config in config_list]
         except TypeError:
             raise ValueError("Config file not parseable.")
@@ -89,7 +89,7 @@ class S3FileSystem:
         constraint: Callable = lambda x: True,
         maxdepth: Optional[int] = None,
         withdirs: bool = False,
-    ) -> Dict[str, Dict[str, str]]:
+    ) -> Generator[Tuple[str, Dict[str, str]], None, None]:
         """List files below path.
 
         Like posix find with additional metedata constrain function.

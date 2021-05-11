@@ -2,7 +2,7 @@
 
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, Generator
 
 from .utils import S3FileSystem, S3ConfigSelector, logger, read_general_config
 
@@ -55,7 +55,7 @@ def parse_timedelta(timestr: str) -> timedelta:
     return timedelta(**time_params)
 
 
-def list_source(config: Dict[str, Any]) -> List[Dict[str, Any]]:
+def list_source(config: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:
     """Lookup recently modifined files.
 
     List files on S3 and filter those that were modified in recent history.
