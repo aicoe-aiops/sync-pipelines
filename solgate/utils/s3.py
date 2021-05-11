@@ -110,11 +110,9 @@ class S3FileSystem:
 
             constraint = lambda meta: meta.get("type", "").lower() != "directory" and _constraint(meta)  # noqa: E731
 
-        return {
-            k.replace(f"{self.__base_path}/", ""): v
-            for k, v in self.s3fs.find(path, maxdepth, withdirs, detail=True).items()
-            if constraint(v)
-        }
+        for k, v in self.s3fs.find(path, maxdepth, withdirs, detail=True).items():
+            if constraint(v):
+                yield k.replace(f"{self.__base_path}/", ""), v
 
     @contextmanager
     def open(self, path: str, mode: str = "rb", **kwargs: Dict[Any, Any]):

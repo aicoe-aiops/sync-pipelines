@@ -114,7 +114,7 @@ def test_s3_file_system_find(mocked_s3, kwargs, expected_object_count):
 
     s3_backend.buckets["BUCKET"].keys["file.csv"].last_modified = datetime(2020, 1, 1)
 
-    assert len(fs.find(**kwargs)) == expected_object_count
+    assert len(list(fs.find(**kwargs))) == expected_object_count
 
 
 @pytest.mark.parametrize(

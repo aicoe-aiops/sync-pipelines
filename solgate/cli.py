@@ -83,11 +83,11 @@ def _list(ctx, output: str = None):
     Only files newer than `timedelta` config value (added or modified) are listed.
     """
     try:
-        files = list_source(ctx.obj["config"])
-        if output:
-            serialize(files, output)
-        else:
-            click.echo(files)
+        for file in list_source(ctx.obj["config"]):
+            if output:
+                serialize(file, output)
+            else:
+                click.echo(file)
     except ValueError as e:
         logger.error(e, exc_info=True)
         raise click.BadParameter("Environment not configured properly")

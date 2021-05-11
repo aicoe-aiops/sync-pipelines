@@ -49,7 +49,7 @@ def serialize(obj: Any, filename: str) -> None:
         filename (str): Local filename, where the JSON will be stored.
 
     """
-    with open(filename, "w") as f:
+    with open(filename, "a") as f:
         json.dump(obj, f, cls=CustomEncoder)
 
 
@@ -64,7 +64,8 @@ def deserialize(filename: str) -> Any:
 
     """
     with open(filename, "r") as f:
-        return json.load(f)
+        for line in f:
+            yield json.loads(line)
 
 
 def _read_yaml_file(filename: Union[str, Path]) -> Dict[str, Any]:

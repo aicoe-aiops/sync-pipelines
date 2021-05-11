@@ -76,11 +76,15 @@ def list_source(config: Dict[str, Any]) -> List[Dict[str, Any]]:
     s3 = S3FileSystem.from_config_file(config)[0]
 
     constraint = lambda meta: meta["LastModified"] >= oldest_date  # noqa: E731
-    located_files = s3.find(constraint=constraint)
 
-    if not located_files:
-        raise FileNotFoundError("No files found in given TIMEDELTA")
-    logger.info("Files found", dict(files=list(located_files.keys())))
-
+    is_files = False
     # Select a metadata subset, so we don't clutter the workflow
-    return [dict(relpath=k, **subset_metadata(v)) for k, v in located_files.items()]
+    for k, v in s3.find(constraint=constraint):
+        if not is_files:
+            logger.info("Files found")
+            is_files = True
+
+        yield dict(relpath=k, **subset_metadata(v))
+
+    if not is_files:
+        raise FileNotFoundError("No files found in given TIMEDELTA")

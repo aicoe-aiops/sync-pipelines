@@ -213,7 +213,7 @@ def test_deserialize(mocker):
     """Should deserialize from JSON."""
     mocked_open = mocker.mock_open(read_data='{"a":"b"}')
     mocker.patch("builtins.open", mocked_open)
-    assert io.deserialize("file.json") == dict(a="b")
+    assert list(io.deserialize("file.json")) == [dict(a="b")]
 
 
 def test_serialize(mocker):
@@ -221,7 +221,7 @@ def test_serialize(mocker):
     mocked_open = mocker.patch("builtins.open")
     io.serialize(dict(a="b"), "file.json")
 
-    mocked_open.assert_called_once_with("file.json", "w")
+    mocked_open.assert_called_once_with("file.json", "a")
     calls = mocked_open.return_value.__enter__.return_value.write.call_args_list
     args = "".join(c.args[0] for c in calls)
     assert args == '{"a": "b"}'
