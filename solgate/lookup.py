@@ -2,9 +2,9 @@
 
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, Generator
 
-from .utils import S3FileSystem, logger, read_general_config
+from .utils import S3FileSystem, S3ConfigSelector, logger, read_general_config
 
 KEYS = ("lastmodified", "etag", "key", "type", "size")
 DEFAULT_TIMEDELTA = "1d"
@@ -55,7 +55,7 @@ def parse_timedelta(timestr: str) -> timedelta:
     return timedelta(**time_params)
 
 
-def list_source(config: Dict[str, Any]) -> List[Dict[str, Any]]:
+def list_source(config: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:
     """Lookup recently modifined files.
 
     List files on S3 and filter those that were modified in recent history.
@@ -73,14 +73,18 @@ def list_source(config: Dict[str, Any]) -> List[Dict[str, Any]]:
     general_config = read_general_config(**config)
 
     oldest_date = datetime.now(timezone.utc) - parse_timedelta(general_config.get("timedelta", DEFAULT_TIMEDELTA))
-    s3 = S3FileSystem.from_config_file(config)[0]
+    s3 = S3FileSystem.from_config_file(config, S3ConfigSelector["source"])[0]
 
     constraint = lambda meta: meta["LastModified"] >= oldest_date  # noqa: E731
-    located_files = s3.find(constraint=constraint)
 
-    if not located_files:
-        raise FileNotFoundError("No files found in given TIMEDELTA")
-    logger.info("Files found", dict(files=list(located_files.keys())))
-
+    is_files = False
     # Select a metadata subset, so we don't clutter the workflow
-    return [dict(relpath=k, **subset_metadata(v)) for k, v in located_files.items()]
+    for k, v in s3.find(constraint=constraint):
+        if not is_files:
+            logger.info("Files found")
+            is_files = True
+
+        yield dict(relpath=k, **subset_metadata(v))
+
+    if not is_files:
+        raise FileNotFoundError("No files found in given TIMEDELTA")

@@ -45,10 +45,11 @@ def test_list(run, mocker, cli_args, func_args, file_output):
     mocked_list_source.assert_called_once_with(*func_args)
 
     if file_output:
-        mocked_serialize.assert_called_once_with(["list", "of", "files"], "output.json")
+        calls = [mocker.call(f, "output.json") for f in ("list", "of", "files")]
+        mocked_serialize.assert_has_calls(calls)
     else:
         mocked_serialize.assert_not_called()
-        assert "['list', 'of', 'files']\n" in result.output
+        assert "list\nof\nfiles\n" in result.output
 
 
 @pytest.mark.parametrize(

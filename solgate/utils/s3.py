@@ -3,7 +3,7 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
 from gzip import GzipFile
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Iterable, Generator, Tuple
 
 import s3fs  # type: ignore
 
@@ -11,6 +11,9 @@ from .io import read_s3_config
 from .logging import logger
 
 DEFAULT_ENDPOINTS = dict(source="https://s3.amazonaws.com/", destination="https://s3.upshift.redhat.com/")
+
+
+S3ConfigSelector = {"source": ("source",), "destination": ("destination",), "all": ("source", "destination")}
 
 
 class S3FileSystem:
@@ -60,7 +63,9 @@ class S3FileSystem:
         )
 
     @classmethod
-    def from_config_file(cls, config: Dict[str, Any]) -> List["S3FileSystem"]:
+    def from_config_file(
+        cls, config: Dict[str, Any], selector: Iterable[str] = S3ConfigSelector["all"]
+    ) -> List["S3FileSystem"]:
         """Instantiate S3fs objects from config file.
 
         Create s3fs using credentials and paths from config files.
@@ -73,18 +78,14 @@ class S3FileSystem:
 
         """
         try:
-            config_list = read_s3_config(**config)
+            config_list = read_s3_config(selector=selector, **config)
             return [cls(**config) for config in config_list]
         except TypeError:
             raise ValueError("Config file not parseable.")
 
     def find(
-        self,
-        path: str = "",
-        constraint: Callable = lambda x: True,
-        maxdepth: Optional[int] = None,
-        withdirs: bool = False,
-    ) -> Dict[str, Dict[str, str]]:
+        self, path: str = "", constraint: Callable = lambda x: True, maxdepth: Optional[int] = None,
+    ) -> Generator[Tuple[str, Dict[str, str]], None, None]:
         """List files below path.
 
         Like posix find with additional metedata constrain function.
@@ -105,16 +106,13 @@ class S3FileSystem:
         path = f"{self.__base_path}/{path}" if path else self.__base_path
 
         # Fix Ceph reporting folders as "type"="file", check for size instead
-        if not withdirs:
-            _constraint = constraint
+        _constraint = constraint
+        constraint = lambda meta: meta.get("type", "").lower() != "directory" and _constraint(meta)  # noqa: E731
 
-            constraint = lambda meta: meta.get("type", "").lower() != "directory" and _constraint(meta)  # noqa: E731
-
-        return {
-            k.replace(f"{self.__base_path}/", ""): v
-            for k, v in self.s3fs.find(path, maxdepth, withdirs, detail=True).items()
-            if constraint(v)
-        }
+        for _, dirs, files in self.s3fs.walk(path, maxdepth, detail=True):
+            for _, info in files.items():
+                if constraint(info) and self.s3fs.isfile(info["Key"]):
+                    yield info["Key"].replace(f"{self.__base_path}/", ""), info
 
     @contextmanager
     def open(self, path: str, mode: str = "rb", **kwargs: Dict[Any, Any]):

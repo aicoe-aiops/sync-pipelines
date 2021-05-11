@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import lru_cache, partial
 from string import Formatter
-from typing import Any, Dict, Iterator, Union
+from typing import Any, Dict, Iterator, Union, Iterable
 
 load = partial(yaml_load, Loader=Loader)
 
@@ -49,8 +49,9 @@ def serialize(obj: Any, filename: str) -> None:
         filename (str): Local filename, where the JSON will be stored.
 
     """
-    with open(filename, "w") as f:
+    with open(filename, "a") as f:
         json.dump(obj, f, cls=CustomEncoder)
+        f.write("\n")
 
 
 def deserialize(filename: str) -> Any:
@@ -64,7 +65,8 @@ def deserialize(filename: str) -> Any:
 
     """
     with open(filename, "r") as f:
-        return json.load(f)
+        for line in f:
+            yield json.loads(line)
 
 
 def _read_yaml_file(filename: Union[str, Path]) -> Dict[str, Any]:
@@ -140,7 +142,7 @@ def _read_creds_file(path: Path, kind: str) -> Dict[str, str]:
         raise
 
 
-def read_s3_config(filename: str, path: Path) -> Iterator[dict]:
+def read_s3_config(filename: str, path: Path, selector: Iterable[str]) -> Iterator[dict]:
     """Read YAML file and parse S3 clients related configuration.
 
     Args:
@@ -152,14 +154,18 @@ def read_s3_config(filename: str, path: Path) -> Iterator[dict]:
 
     """
     config = _read_yaml_file(path / filename)
-    source = dict(name="source", **config.get("source", {}))
-    _fetch_creds(path, source)
-    yield source
 
-    for idx, s in enumerate(config.get("destinations", [])):
-        destination = dict(name=f"destination.{idx}", **s)
-        _fetch_creds(path, destination)
-        yield destination
+    cfgs = []
+    for s in selector:
+        if s == "source":
+            cfgs.append(dict(name="source", **config.get("source", {})))
+        if s == "destination":
+            for idx, d in enumerate(config.get("destinations", [])):
+                cfgs.append(dict(name=f"destination.{idx}", **d))
+
+    for cfg in cfgs:
+        _fetch_creds(path, cfg)
+        yield cfg
 
 
 def read_general_config(filename: str, path: Path) -> Dict[str, Any]:
