@@ -30,7 +30,8 @@ def context(**kwargs):
     "cli_args,func_args,file_output",
     [
         (["list"], [context(), False], False),
-        (["list", "--backfill"], [context(), True], False),
+        (["list", "--backfill", "false"], [context(), False], False),
+        (["list", "--backfill", "true"], [context(), True], False),
         (["-c", ".", "list"], [context(path=Path(".")), False], False),
         (["list", "-o", "output.json"], [context(), False], True),
     ],
