@@ -5,8 +5,8 @@ metadata:
 spec:
   arguments:
     parameters:
-      - name: additional-lookup-params
-        value: ""
+      - name: is-backfill
+        value: "false"
   entrypoint: entrypoint
   onExit: exit-handler
   templates:
@@ -29,7 +29,9 @@ spec:
         command: ["solgate", "list"]
         args:
           - "-o"
-          - "/mnt/vol/filelist.json {{workflow.parameters.additional-lookup-params}}"
+          - "/mnt/vol/filelist.json"
+          - "--backfill"
+          - "{{workflow.parameters.is-backfill}}"
         resources:
           limits:
             cpu: 500m
