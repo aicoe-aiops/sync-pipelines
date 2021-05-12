@@ -112,3 +112,10 @@
 * fix: Enable tower analytics sync (#81)
 * :arrow_up: Automatic update of dependencies by Kebechet (#80)
 * feat: Add Tower Analytics stage/prod sync pipelines (#79)
+
+## Release 3.4.1 (2021-05-12T08:22:22)
+### Features
+* :arrow_up: Automatic update of dependencies by Kebechet (#96)
+* :arrow_up: Automatic update of dependencies by Kebechet (#93)
+* fix: Backfill param passing from workflow (#94)
+* fix: Optional param in wftmpl (#92)
