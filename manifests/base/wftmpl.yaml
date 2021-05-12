@@ -29,8 +29,7 @@ spec:
         command: ["solgate", "list"]
         args:
           - "-o"
-          - "/mnt/vol/filelist.json"
-          - "{{workflow.parameters.additional-lookup-params}}"
+          - "/mnt/vol/filelist.json {{workflow.parameters.additional-lookup-params}}"
         resources:
           limits:
             cpu: 500m
