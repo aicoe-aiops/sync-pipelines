@@ -79,8 +79,15 @@ def _send(ctx, key: str = None, listing_file: str = None):
 @click.option(
     "--backfill", type=click.BOOL, default=False, help="Ignore TIMEDELTA constrain and run a backfill lookup."
 )
+@click.option(
+    "--silent",
+    type=click.BOOL,
+    is_flag=True,
+    default=False,
+    help="Ignore TIMEDELTA constrain and run a backfill lookup.",
+)
 @click.pass_context
-def _list(ctx, backfill: bool, output: str = None):
+def _list(ctx, backfill: bool, silent: bool = False, output: str = None):
     """Query the source bucket for files ready to be transferred.
 
     Only files newer than `timedelta` config value (added or modified) are listed.
@@ -89,7 +96,7 @@ def _list(ctx, backfill: bool, output: str = None):
         for file in list_source(ctx.obj["config"], backfill):
             if output:
                 serialize(file, output)
-            else:
+            if not silent:
                 click.echo(file)
     except ValueError as e:
         logger.error(e, exc_info=True)

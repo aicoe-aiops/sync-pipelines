@@ -6,6 +6,7 @@ from gzip import GzipFile
 from typing import Any, Callable, Dict, List, Optional, Iterable, Generator, Tuple
 
 import s3fs  # type: ignore
+import boto3
 
 from .io import read_s3_config
 from .logging import logger
@@ -61,6 +62,12 @@ class S3FileSystem:
             secret=self.aws_secret_access_key,
             client_kwargs=dict(endpoint_url=self.endpoint_url),
         )
+        self.boto3 = boto3.resource(
+            "s3",
+            aws_access_key_id=self.aws_access_key_id,
+            aws_secret_access_key=self.aws_secret_access_key,
+            endpoint_url=self.endpoint_url,
+        ).Bucket(self.__base_path.split("/")[0])
 
     @classmethod
     def from_config_file(
@@ -105,14 +112,9 @@ class S3FileSystem:
         """
         path = f"{self.__base_path}/{path}" if path else self.__base_path
 
-        # Fix Ceph reporting folders as "type"="file", check for size instead
-        _constraint = constraint
-        constraint = lambda meta: meta.get("type", "").lower() != "directory" and _constraint(meta)  # noqa: E731
-
-        for _, dirs, files in self.s3fs.walk(path, maxdepth, detail=True):
-            for _, info in files.items():
-                if constraint(info) and self.s3fs.isfile(info["Key"]):
-                    yield info["Key"].replace(f"{self.__base_path}/", ""), info
+        for obj in self.boto3.objects.all():
+            if constraint(obj):
+                yield obj
 
     @contextmanager
     def open(self, path: str, mode: str = "rb", **kwargs: Dict[Any, Any]):
