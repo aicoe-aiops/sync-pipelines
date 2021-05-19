@@ -4,6 +4,8 @@ import shutil
 from itertools import tee
 from typing import Any, Dict, Iterable, Iterator, List
 
+import backoff
+
 from .utils import S3File, S3FileSystem, key_formatter, logger
 
 
@@ -84,6 +86,13 @@ def verify(files: Iterable[S3File]) -> bool:
     return all(a == b for a, b in zip(file_a, file_b))
 
 
+class TransferFailed(Exception):
+    """Raised for retry purposes when transfer fails for any reason."""
+
+    pass
+
+
+@backoff.on_exception(backoff.expo, TransferFailed, max_tries=10, logger=logger)
 def _transfer_single_file(source_path: str, clients: List[S3FileSystem]) -> bool:
     """Transfer single object between S3s.
 
@@ -108,12 +117,12 @@ def _transfer_single_file(source_path: str, clients: List[S3FileSystem]) -> bool
 
     except:  # noqa: E722
         logger.error("Failed to transfer a file", exc_info=True)
-        return False
+        raise TransferFailed
 
     logger.info("Verifying file", dict(files=files))
     if not verify(files):
         logger.warning("Verification failed", dict(files=files))
-        return False
+        raise TransferFailed
 
     logger.info("Verified", dict(files=files))
     return True
@@ -146,8 +155,10 @@ def send(files_to_transfer: List[Dict[str, Any]], config: Dict[str, Any]) -> boo
     failed = []
     for source_file in files_to_transfer:
         try:
-            if not _transfer_single_file(source_file["key"], clients):
-                failed.append(source_file)
+            _transfer_single_file(source_file["key"], clients)
+        except TransferFailed:
+            logger.error("Max retries reached", dict(file=source_file), exc_info=True)
+            failed.append(source_file)
         except KeyError:
             logger.error("Unable to parse file key", dict(file=source_file), exc_info=True)
             failed.append(source_file)
