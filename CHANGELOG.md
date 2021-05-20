@@ -119,3 +119,8 @@
 * :arrow_up: Automatic update of dependencies by Kebechet (#93)
 * fix: Backfill param passing from workflow (#94)
 * fix: Optional param in wftmpl (#92)
+
+## Release 3.5.0 (2021-05-20T10:46:11)
+### Features
+* :arrow_up: Automatic update of dependencies by Kebechet (#97)
+* Switch to boto3, add `--silent`, `--dry-run` and retry loginc (#99)
