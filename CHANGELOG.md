@@ -124,3 +124,7 @@
 ### Features
 * :arrow_up: Automatic update of dependencies by Kebechet (#97)
 * Switch to boto3, add `--silent`, `--dry-run` and retry loginc (#99)
+
+## Release 3.5.1 (2021-05-20T13:06:47)
+### Features
+* fix: List all deps in setup.py (#102)
