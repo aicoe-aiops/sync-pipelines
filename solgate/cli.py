@@ -43,8 +43,16 @@ def cli(ctx, config_filename, config_folder):  # noqa: D301
         "If set, solgate will ignore the KEY argument and use the listing file instead."
     ),
 )
+@click.option(
+    "--dry-run",
+    "-n",
+    type=click.BOOL,
+    is_flag=True,
+    default=False,
+    help="Do not execute file transfers, just list what would happen.",
+)
 @click.pass_context
-def _send(ctx, key: str = None, listing_file: str = None):
+def _send(ctx, key: str = None, listing_file: str = None, dry_run: bool = False):
     """Sync S3 objects.
 
     KEY points to a S3 Object within the source base path, that is meant to be transferred.
@@ -52,12 +60,12 @@ def _send(ctx, key: str = None, listing_file: str = None):
     if listing_file:
         files_to_transfer = deserialize(listing_file)
     elif key:
-        files_to_transfer = [dict(relpath=key)]
+        files_to_transfer = [dict(key=key)]
     else:
         files_to_transfer = []
 
     try:
-        send(files_to_transfer, ctx.obj["config"])
+        send(files_to_transfer, ctx.obj["config"], dry_run)
     except FileNotFoundError as e:
         logger.error(e, exc_info=True)
         raise NoFilesToSyncError(*e.args)
@@ -79,8 +87,15 @@ def _send(ctx, key: str = None, listing_file: str = None):
 @click.option(
     "--backfill", type=click.BOOL, default=False, help="Ignore TIMEDELTA constrain and run a backfill lookup."
 )
+@click.option(
+    "--silent",
+    type=click.BOOL,
+    is_flag=True,
+    default=False,
+    help="Ignore TIMEDELTA constrain and run a backfill lookup.",
+)
 @click.pass_context
-def _list(ctx, backfill: bool, output: str = None):
+def _list(ctx, backfill: bool, silent: bool = False, output: str = None):
     """Query the source bucket for files ready to be transferred.
 
     Only files newer than `timedelta` config value (added or modified) are listed.
@@ -89,7 +104,7 @@ def _list(ctx, backfill: bool, output: str = None):
         for file in list_source(ctx.obj["config"], backfill):
             if output:
                 serialize(file, output)
-            else:
+            if not silent:
                 click.echo(file)
     except ValueError as e:
         logger.error(e, exc_info=True)
@@ -173,7 +188,7 @@ def _report(
     try:
         config = read_general_config(**ctx.obj["config"])
     except IOError:
-        logger.warn("Config file is not present or not valid, alerting to/from default email address.")
+        logger.warning("Config file is not present or not valid, alerting to/from default email address.")
         config = {}
 
     params = dict(alerts_from=from_, alerts_to=to, alerts_smtp_server=smtp)

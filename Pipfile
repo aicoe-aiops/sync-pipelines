@@ -18,6 +18,8 @@ logstash-formatter = ">=0.5.17"
 jinja2 = ">=2.11"
 click = "*"
 pyyaml = "*"
+boto3 = "*"
+backoff = "*"
 
 [requires]
 python_version = "3.8"

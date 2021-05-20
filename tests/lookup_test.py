@@ -11,19 +11,6 @@ from solgate import lookup
 @pytest.mark.parametrize(
     "input,output",
     [
-        (dict(Size=1), dict(size=1)),
-        (dict(something=False), dict()),
-        (dict(LastModified=1, KEY="file.csv", Key="file.csv"), dict(lastmodified=1, key="file.csv")),
-    ],
-)
-def test_subset_metadata(input, output):
-    """Should filter metadata."""
-    assert output == lookup.subset_metadata(input)
-
-
-@pytest.mark.parametrize(
-    "input,output",
-    [
         ("1d", timedelta(days=1)),
         ("1h", timedelta(hours=1)),
         ("1m", timedelta(minutes=1)),

@@ -6,23 +6,8 @@ from typing import Any, Dict, Generator
 
 from .utils import S3FileSystem, S3ConfigSelector, logger, read_general_config
 
-KEYS = ("lastmodified", "etag", "key", "type", "size")
+KEYS = ("last_modified", "e_tag", "key", "size")
 DEFAULT_TIMEDELTA = "1d"
-
-
-def subset_metadata(meta: Dict[str, Any]) -> Dict[str, Any]:
-    """Select a metadata subset.
-
-    Matches the keys listed in KEYS only, so we don't clutter the workflow.
-
-    Args:
-        meta (Dict[str, Any]): Metadata map
-
-    Returns:
-        Dict[str, Any]: Subset of the metadata
-
-    """
-    return {k.lower(): v for k, v in meta.items() if k.lower() in KEYS}
 
 
 # fmt: off
@@ -78,16 +63,16 @@ def list_source(config: Dict[str, Any], backfill=False) -> Generator[Dict[str, A
     if backfill:
         constraint = lambda _: True  # noqa: E731
     else:
-        constraint = lambda meta: meta["LastModified"] >= oldest_date  # noqa: E731
+        constraint = lambda obj: obj.last_modified >= oldest_date  # noqa: E731
 
     is_files = False
     # Select a metadata subset, so we don't clutter the workflow
-    for k, v in s3.find(constraint=constraint):
+    for obj in s3.find(constraint=constraint):
         if not is_files:
             logger.info("Files found")
             is_files = True
 
-        yield dict(relpath=k, **subset_metadata(v))
+        yield {k: getattr(obj, k) for k in KEYS}
 
     if not is_files:
         raise FileNotFoundError("No files found in given TIMEDELTA")

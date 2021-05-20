@@ -69,15 +69,17 @@ def test_list_negative(run, mocker, side_effect, errno):
 @pytest.mark.parametrize(
     "cli_args,func_args",
     [
-        (["send", "key"], [[dict(relpath="key")], context()]),
-        (["send", "-l", "."], [[dict(relpath="file/key")], context()]),
-        (["-c", ".", "send", "key"], [[dict(relpath="key")], context(path=Path("."))]),
+        (["send", "key"], [[dict(key="key")], context(), None]),
+        (["send", "-l", "."], [[dict(key="file/key")], context(), None]),
+        (["-c", ".", "send", "key"], [[dict(key="key")], context(path=Path(".")), None]),
+        (["send", "key", "--dry-run"], [[dict(key="key")], context(), True]),
+        (["send", "key", "-n"], [[dict(key="key")], context(), True]),
     ],
 )
 def test_send(run, mocker, cli_args, func_args):
     """Should call proper functions on sync command."""
     mocked_send = mocker.patch("solgate.cli.send")
-    mocker.patch("solgate.cli.deserialize", return_value=[dict(relpath="file/key")])
+    mocker.patch("solgate.cli.deserialize", return_value=[dict(key="file/key")])
 
     result = run(cli_args)
 
@@ -174,7 +176,7 @@ def test_report(run, mocker, cli_args, func_args, fixture_dir, env):
         cli_args[1] = fixture_dir
     else:
         # If config wasn't specified, spy for a warning
-        logger_spy = mocker.spy(logger, "warn")
+        logger_spy = mocker.spy(logger, "warning")
 
     run(cli_args, env)
 

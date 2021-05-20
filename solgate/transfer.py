@@ -4,6 +4,8 @@ import shutil
 from itertools import tee
 from typing import Any, Dict, Iterable, Iterator, List
 
+import backoff
+
 from .utils import S3File, S3FileSystem, key_formatter, logger
 
 
@@ -68,7 +70,7 @@ def calc_s3_files(source_path: str, clients: List[S3FileSystem]) -> Iterator[S3F
             yield S3File(c, destination_path)
 
 
-def verify(files: Iterable[S3File]) -> bool:
+def verify(files: Iterable[S3File], dry_run: bool = False) -> bool:
     """Compare all transferred files.
 
     Args:
@@ -78,21 +80,36 @@ def verify(files: Iterable[S3File]) -> bool:
         bool: True if all matches.
 
     """
+    if dry_run:
+        logger.info("Skipping verification doe to a dry run.")
+        return True
+
     file_a, file_b = tee(files)
     next(file_b, None)
 
     return all(a == b for a, b in zip(file_a, file_b))
 
 
-def _transfer_single_file(source_path: str, clients: List[S3FileSystem]) -> bool:
+class TransferFailed(Exception):
+    """Raised for retry purposes when transfer fails for any reason."""
+
+    pass
+
+
+@backoff.on_exception(backoff.expo, TransferFailed, max_tries=10, logger=logger)
+def _transfer_single_file(source_path: str, clients: List[S3FileSystem], dry_run: bool = False) -> None:
     """Transfer single object between S3s.
 
     Args:
         source_path (str): Key to the object within the source S3 bucket.
         clients (List[S3FileSystem]): S3 clients to sync between.
+        dry_run (bool, optional): Do not execute file transfers, just list what would happen.
+
+    Raises:
+        TransferError: In case of transfer or verification failure
 
     Returns:
-        bool: True if success.
+        None: Returns if success
 
     """
     try:
@@ -104,27 +121,28 @@ def _transfer_single_file(source_path: str, clients: List[S3FileSystem]) -> bool
                 destinations=[dict(name=f.client, key=f.key) for f in files[1:]],
             ),
         )
-        copy(files)
+        if not dry_run:
+            copy(files)
 
     except:  # noqa: E722
         logger.error("Failed to transfer a file", exc_info=True)
-        return False
+        raise TransferFailed("Failed to transfer a file")
 
     logger.info("Verifying file", dict(files=files))
-    if not verify(files):
+    if not verify(files, dry_run):
         logger.warning("Verification failed", dict(files=files))
-        return False
+        raise TransferFailed("Verification failed")
 
     logger.info("Verified", dict(files=files))
-    return True
 
 
-def send(files_to_transfer: List[Dict[str, Any]], config: Dict[str, Any]) -> bool:
+def send(files_to_transfer: List[Dict[str, Any]], config: Dict[str, Any], dry_run: bool = False) -> bool:
     """Transfer recent data between S3s, multiple files.
 
     Args:
         filename (str): Json file that contains list of S3 objects to be transferred.
         config_file (str, optional): Path to configuration file. Defaults to None.
+        dry_run (bool, optional): Do not execute file transfers, just list what would happen.
 
     Returns:
         bool: True if success
@@ -146,8 +164,10 @@ def send(files_to_transfer: List[Dict[str, Any]], config: Dict[str, Any]) -> boo
     failed = []
     for source_file in files_to_transfer:
         try:
-            if not _transfer_single_file(source_file["relpath"], clients):
-                failed.append(source_file)
+            _transfer_single_file(source_file["key"], clients, dry_run)
+        except TransferFailed:
+            logger.error("Max retries reached", dict(file=source_file), exc_info=True)
+            failed.append(source_file)
         except KeyError:
             logger.error("Unable to parse file key", dict(file=source_file), exc_info=True)
             failed.append(source_file)
