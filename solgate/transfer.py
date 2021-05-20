@@ -93,15 +93,18 @@ class TransferFailed(Exception):
 
 
 @backoff.on_exception(backoff.expo, TransferFailed, max_tries=10, logger=logger)
-def _transfer_single_file(source_path: str, clients: List[S3FileSystem]) -> bool:
+def _transfer_single_file(source_path: str, clients: List[S3FileSystem]) -> None:
     """Transfer single object between S3s.
 
     Args:
         source_path (str): Key to the object within the source S3 bucket.
         clients (List[S3FileSystem]): S3 clients to sync between.
 
+    Raises:
+        TransferError: In case of transfer or verification failure
+
     Returns:
-        bool: True if success.
+        None: Returns if success
 
     """
     try:
@@ -117,15 +120,14 @@ def _transfer_single_file(source_path: str, clients: List[S3FileSystem]) -> bool
 
     except:  # noqa: E722
         logger.error("Failed to transfer a file", exc_info=True)
-        raise TransferFailed
+        raise TransferFailed("Failed to transfer a file")
 
     logger.info("Verifying file", dict(files=files))
     if not verify(files):
         logger.warning("Verification failed", dict(files=files))
-        raise TransferFailed
+        raise TransferFailed("Verification failed")
 
     logger.info("Verified", dict(files=files))
-    return True
 
 
 def send(files_to_transfer: List[Dict[str, Any]], config: Dict[str, Any]) -> bool:

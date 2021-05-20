@@ -8,7 +8,7 @@ from solgate.utils import S3File
 
 
 @pytest.mark.parametrize(
-    "file_list", ([dict(relpath="a/b/file.csv")], [dict(relpath="a/b/file1.csv"), dict(relpath="a/b/file2.csv")])
+    "file_list", ([dict(key="a/b/file.csv")], [dict(key="a/b/file1.csv"), dict(key="a/b/file2.csv")])
 )
 def test_send(mocker, file_list, mocked_solgate_s3_file_system):
     """Should request files to be sent to clients."""
@@ -17,7 +17,7 @@ def test_send(mocker, file_list, mocked_solgate_s3_file_system):
     transfer.send(file_list, {})
 
     for f in file_list:
-        mocked_transfer_single_file.assert_any_call(f["relpath"], [mocked_solgate_s3_file_system])
+        mocked_transfer_single_file.assert_any_call(f["key"], [mocked_solgate_s3_file_system])
 
 
 @pytest.mark.parametrize(
@@ -56,11 +56,14 @@ def test_send_not_configured_properly(mocker):
 
 def test_send_unable_to_transfer(mocker, mocked_solgate_s3_file_system):
     """Should log failures."""
-    mocker.patch("solgate.transfer._transfer_single_file", return_value=False)
+    mocker.patch("solgate.transfer._transfer_single_file", side_effect=transfer.TransferFailed())
+    logger_spy = mocker.spy(transfer.logger, "error")
 
     with pytest.raises(IOError) as e:
-        transfer.send([dict(relpath="a/b/file.csv")], {})
-        assert e.args[1] == dict(failed_files=[dict(relpath="a/b/file.csv")])
+        transfer.send([dict(key="a/b/file.csv")], {})
+        assert e.args[1] == dict(failed_files=[dict(key="a/b/file.csv")])
+
+    logger_spy.assert_called_once_with("Max retries reached", mocker.ANY, exc_info=True)
 
 
 @pytest.mark.parametrize("mocked_s3", ["sample_config.yaml"], indirect=["mocked_s3"])
@@ -96,7 +99,7 @@ def test__transfer_single_file(mocked_s3):
         "2020-01-01/collection_name.csv.gz",
     ]
 
-    assert transfer._transfer_single_file("2020-01-01/collection_name.csv.gz", mocked_s3)
+    assert transfer._transfer_single_file("2020-01-01/collection_name.csv.gz", mocked_s3) is None
     assert all([mocked_s3[idx].info(f) for idx, f in enumerate(files)])
 
 
@@ -106,27 +109,31 @@ def test__transfer_single_file_same_client(mocked_s3):
     mocked_s3[0].s3fs.touch("BUCKET/a/b.csv")
     files = ["a/b.csv", "a-copy/b.csv"]
 
-    assert transfer._transfer_single_file("a/b.csv", mocked_s3)
+    assert transfer._transfer_single_file("a/b.csv", mocked_s3) is None
     assert all([mocked_s3[idx].info(f) for idx, f in enumerate(files)])
 
 
 @pytest.mark.parametrize("mocked_s3", ["sample_config.yaml"], indirect=["mocked_s3"])
-def test__transfer_single_file_unable_to_verify(mocked_s3, mocker):
+@pytest.mark.parametrize("disable_backoff", [transfer], indirect=["disable_backoff"])
+def test__transfer_single_file_unable_to_verify(mocked_s3, disable_backoff, mocker):
     """Should return False on verification failure."""
     mocked_s3[0].s3fs.touch("DH-PLAYPEN/storage/input/2020-01-01/collection_name.csv.gz")
     mocker.patch("solgate.transfer.verify", return_value=False)
 
-    assert transfer._transfer_single_file("2020-01-01/collection_name.csv.gz", mocked_s3) is False
+    with pytest.raises(transfer.TransferFailed):
+        transfer._transfer_single_file("2020-01-01/collection_name.csv.gz", mocked_s3)
 
 
 @pytest.mark.parametrize("mocked_s3", ["sample_config.yaml"], indirect=["mocked_s3"])
-def test__transfer_single_file_fails(mocked_s3):
+@pytest.mark.parametrize("disable_backoff", [transfer], indirect=["disable_backoff"])
+def test__transfer_single_file_fails(mocked_s3, disable_backoff):
     """Should return False if unable to transfer."""
     mocked_s3[0].s3fs.touch("DH-PLAYPEN/storage/input/2020-01-01/collection_name.csv.gz")
     destination_client = mocked_s3[1]
     destination_client._S3FileSystem__base_path = "BUCKET-DOESNT-EXIST"
 
-    assert transfer._transfer_single_file("2020-01-01/collection_name.csv.gz", mocked_s3) is False
+    with pytest.raises(transfer.TransferFailed):
+        transfer._transfer_single_file("2020-01-01/collection_name.csv.gz", mocked_s3)
 
 
 @pytest.mark.parametrize("mocked_s3", ["same_client.yaml"], indirect=["mocked_s3"])

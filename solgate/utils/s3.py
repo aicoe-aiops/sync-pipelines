@@ -52,6 +52,10 @@ class S3FileSystem:
             dict(name=name, endpoint_url=self.endpoint_url, base_path=base_path, is_source=self.is_source),
         )
         self.__base_path = base_path
+        parsed_path = base_path.split("/", 1)
+        self.bucket = parsed_path.pop(0)
+        self.path = "/".join(parsed_path).rstrip("/")
+
         self.aws_secret_access_key = aws_secret_access_key
         self.aws_access_key_id = aws_access_key_id
         self.formatter = str(kwargs.pop("formatter", ""))
@@ -91,7 +95,7 @@ class S3FileSystem:
             raise ValueError("Config file not parseable.")
 
     def find(
-        self, path: str = "", constraint: Callable = lambda x: True, maxdepth: Optional[int] = None,
+        self, path: str = "", constraint: Callable = lambda x: True
     ) -> Generator[Tuple[str, Dict[str, str]], None, None]:
         """List files below path.
 
@@ -101,18 +105,19 @@ class S3FileSystem:
             path (str, optional): Path below __base_path to lookup. Defaults to "".
             constraint (Callable): Constraint function matching on metadata.
                 Defaults to all files.
-            maxdepth(int, optional): The maximum number of levels to descend.
-                Defaults to no limit.
-            withdirs(bool, optional): Whether to include directory paths in the
-                output. Defaults to False.
 
         Returns:
             Dict[str, Dict[str, str]]: S3 file key and metadata as a dict
 
         """
-        path = f"{self.__base_path}/{path}" if path else self.__base_path
+        path = (f"{self.path}/{path}" if path else self.path).strip("/")
 
-        for obj in self.boto3.objects.all():
+        if path:
+            iterator = self.boto3.objects.filter(Prefix=f"{path}/")
+        else:
+            iterator = self.boto3.objects.all()
+
+        for obj in iterator:
             if constraint(obj):
                 yield obj
 

@@ -1,9 +1,11 @@
 """Contest for solgate testsuite."""
 
 from pathlib import Path
+from importlib import reload
 
 import pytest
 import s3fs
+import boto3
 from moto import mock_s3
 from solgate.utils import S3FileSystem
 
@@ -22,6 +24,9 @@ def mocked_s3(fixture_dir, request):
         for instance in s3fs_instances:
             instance.s3fs = s3fs.S3FileSystem(key=instance.aws_access_key_id, secret=instance.aws_secret_access_key)
             instance.s3fs.s3.create_bucket(Bucket=instance._S3FileSystem__base_path.split("/")[0])
+            instance.boto3 = boto3.resource(
+                "s3", aws_access_key_id=instance.aws_access_key_id, aws_secret_access_key=instance.aws_secret_access_key
+            ).Bucket(instance._S3FileSystem__base_path.split("/")[0])
         yield s3fs_instances
 
 
@@ -31,3 +36,10 @@ def mocked_solgate_s3_file_system(mocker):
     mocked_s3_fs = mocker.patch("solgate.transfer.S3FileSystem")
     mocked_s3_fs.from_config_file.return_value = [mocked_s3_fs]
     return mocked_s3_fs
+
+
+@pytest.fixture
+def disable_backoff(mocker, request):
+    """Disable backoff retry decorator."""
+    mocker.patch("backoff.on_exception", lambda *_, **__: lambda x: x)
+    reload(request.param)

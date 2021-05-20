@@ -52,7 +52,7 @@ def _send(ctx, key: str = None, listing_file: str = None):
     if listing_file:
         files_to_transfer = deserialize(listing_file)
     elif key:
-        files_to_transfer = [dict(relpath=key)]
+        files_to_transfer = [dict(key=key)]
     else:
         files_to_transfer = []
 
@@ -180,7 +180,7 @@ def _report(
     try:
         config = read_general_config(**ctx.obj["config"])
     except IOError:
-        logger.warn("Config file is not present or not valid, alerting to/from default email address.")
+        logger.warning("Config file is not present or not valid, alerting to/from default email address.")
         config = {}
 
     params = dict(alerts_from=from_, alerts_to=to, alerts_smtp_server=smtp)
