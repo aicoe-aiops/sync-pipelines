@@ -192,6 +192,10 @@ class S3FileSystem:
         """Use name as a string destriptor for instances."""
         return self.name
 
+    def __repr__(self):
+        """Use self.name as an identifier."""
+        return f"S3FileSystem(name='{self.name}')"
+
 
 @dataclass
 class S3File:
