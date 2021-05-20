@@ -8,16 +8,21 @@ from solgate.utils import S3File
 
 
 @pytest.mark.parametrize(
-    "file_list", ([dict(key="a/b/file.csv")], [dict(key="a/b/file1.csv"), dict(key="a/b/file2.csv")])
+    "file_list,dry_run",
+    (
+        ([dict(key="a/b/file.csv")], False),
+        ([dict(key="a/b/file.csv")], True),
+        ([dict(key="a/b/file1.csv"), dict(key="a/b/file2.csv")], True),
+    ),
 )
-def test_send(mocker, file_list, mocked_solgate_s3_file_system):
+def test_send(mocker, file_list, dry_run, mocked_solgate_s3_file_system):
     """Should request files to be sent to clients."""
     mocked_transfer_single_file = mocker.patch("solgate.transfer._transfer_single_file")
 
-    transfer.send(file_list, {})
+    transfer.send(file_list, {}, dry_run)
 
     for f in file_list:
-        mocked_transfer_single_file.assert_any_call(f["key"], [mocked_solgate_s3_file_system])
+        mocked_transfer_single_file.assert_any_call(f["key"], [mocked_solgate_s3_file_system], dry_run)
 
 
 @pytest.mark.parametrize(
@@ -101,6 +106,25 @@ def test__transfer_single_file(mocked_s3):
 
     assert transfer._transfer_single_file("2020-01-01/collection_name.csv.gz", mocked_s3) is None
     assert all([mocked_s3[idx].info(f) for idx, f in enumerate(files)])
+
+
+@pytest.mark.parametrize("mocked_s3", ["sample_config.yaml"], indirect=["mocked_s3"])
+def test__transfer_single_file_dry_run(mocked_s3, mocker):
+    """Should transfer and verify file."""
+    mocked_s3[0].s3fs.touch("DH-PLAYPEN/storage/input/2020-01-01/collection_name.csv.gz")
+    mocked_copy = mocker.patch("solgate.transfer.copy")
+
+    files = [
+        "collection_name/historic/2020-01-01-collection_name.csv",
+        "collection_name/latest/full_data.csv",
+        "2020-01-01/collection_name.csv.gz",
+    ]
+
+    assert transfer._transfer_single_file("2020-01-01/collection_name.csv.gz", mocked_s3, True) is None
+    mocked_copy.assert_not_called()
+    for idx, f in enumerate(files):
+        with pytest.raises(FileNotFoundError):
+            mocked_s3[idx + 1].info(f)
 
 
 @pytest.mark.parametrize("mocked_s3", ["same_client.yaml", "same_flags.yaml"], indirect=["mocked_s3"])

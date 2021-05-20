@@ -69,9 +69,11 @@ def test_list_negative(run, mocker, side_effect, errno):
 @pytest.mark.parametrize(
     "cli_args,func_args",
     [
-        (["send", "key"], [[dict(key="key")], context()]),
-        (["send", "-l", "."], [[dict(key="file/key")], context()]),
-        (["-c", ".", "send", "key"], [[dict(key="key")], context(path=Path("."))]),
+        (["send", "key"], [[dict(key="key")], context(), None]),
+        (["send", "-l", "."], [[dict(key="file/key")], context(), None]),
+        (["-c", ".", "send", "key"], [[dict(key="key")], context(path=Path(".")), None]),
+        (["send", "key", "--dry-run"], [[dict(key="key")], context(), True]),
+        (["send", "key", "-n"], [[dict(key="key")], context(), True]),
     ],
 )
 def test_send(run, mocker, cli_args, func_args):

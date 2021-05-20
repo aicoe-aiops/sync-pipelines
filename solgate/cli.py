@@ -43,8 +43,16 @@ def cli(ctx, config_filename, config_folder):  # noqa: D301
         "If set, solgate will ignore the KEY argument and use the listing file instead."
     ),
 )
+@click.option(
+    "--dry-run",
+    "-n",
+    type=click.BOOL,
+    is_flag=True,
+    default=False,
+    help="Do not execute file transfers, just list what would happen.",
+)
 @click.pass_context
-def _send(ctx, key: str = None, listing_file: str = None):
+def _send(ctx, key: str = None, listing_file: str = None, dry_run: bool = False):
     """Sync S3 objects.
 
     KEY points to a S3 Object within the source base path, that is meant to be transferred.
@@ -57,7 +65,7 @@ def _send(ctx, key: str = None, listing_file: str = None):
         files_to_transfer = []
 
     try:
-        send(files_to_transfer, ctx.obj["config"])
+        send(files_to_transfer, ctx.obj["config"], dry_run)
     except FileNotFoundError as e:
         logger.error(e, exc_info=True)
         raise NoFilesToSyncError(*e.args)

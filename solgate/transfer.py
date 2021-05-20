@@ -70,7 +70,7 @@ def calc_s3_files(source_path: str, clients: List[S3FileSystem]) -> Iterator[S3F
             yield S3File(c, destination_path)
 
 
-def verify(files: Iterable[S3File]) -> bool:
+def verify(files: Iterable[S3File], dry_run: bool = False) -> bool:
     """Compare all transferred files.
 
     Args:
@@ -80,6 +80,10 @@ def verify(files: Iterable[S3File]) -> bool:
         bool: True if all matches.
 
     """
+    if dry_run:
+        logger.info("Skipping verification doe to a dry run.")
+        return True
+
     file_a, file_b = tee(files)
     next(file_b, None)
 
@@ -93,12 +97,13 @@ class TransferFailed(Exception):
 
 
 @backoff.on_exception(backoff.expo, TransferFailed, max_tries=10, logger=logger)
-def _transfer_single_file(source_path: str, clients: List[S3FileSystem]) -> None:
+def _transfer_single_file(source_path: str, clients: List[S3FileSystem], dry_run: bool = False) -> None:
     """Transfer single object between S3s.
 
     Args:
         source_path (str): Key to the object within the source S3 bucket.
         clients (List[S3FileSystem]): S3 clients to sync between.
+        dry_run (bool, optional): Do not execute file transfers, just list what would happen.
 
     Raises:
         TransferError: In case of transfer or verification failure
@@ -116,26 +121,28 @@ def _transfer_single_file(source_path: str, clients: List[S3FileSystem]) -> None
                 destinations=[dict(name=f.client, key=f.key) for f in files[1:]],
             ),
         )
-        copy(files)
+        if not dry_run:
+            copy(files)
 
     except:  # noqa: E722
         logger.error("Failed to transfer a file", exc_info=True)
         raise TransferFailed("Failed to transfer a file")
 
     logger.info("Verifying file", dict(files=files))
-    if not verify(files):
+    if not verify(files, dry_run):
         logger.warning("Verification failed", dict(files=files))
         raise TransferFailed("Verification failed")
 
     logger.info("Verified", dict(files=files))
 
 
-def send(files_to_transfer: List[Dict[str, Any]], config: Dict[str, Any]) -> bool:
+def send(files_to_transfer: List[Dict[str, Any]], config: Dict[str, Any], dry_run: bool = False) -> bool:
     """Transfer recent data between S3s, multiple files.
 
     Args:
         filename (str): Json file that contains list of S3 objects to be transferred.
         config_file (str, optional): Path to configuration file. Defaults to None.
+        dry_run (bool, optional): Do not execute file transfers, just list what would happen.
 
     Returns:
         bool: True if success
@@ -157,7 +164,7 @@ def send(files_to_transfer: List[Dict[str, Any]], config: Dict[str, Any]) -> boo
     failed = []
     for source_file in files_to_transfer:
         try:
-            _transfer_single_file(source_file["key"], clients)
+            _transfer_single_file(source_file["key"], clients, dry_run)
         except TransferFailed:
             logger.error("Max retries reached", dict(file=source_file), exc_info=True)
             failed.append(source_file)
