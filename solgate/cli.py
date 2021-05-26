@@ -100,12 +100,15 @@ def _list(ctx, backfill: bool, silent: bool = False, output: str = None):
 
     Only files newer than `timedelta` config value (added or modified) are listed.
     """
+    if backfill:
+        logger.info("Running in a backfill mode")
     try:
-        for file in list_source(ctx.obj["config"], backfill):
+        for idx, file in enumerate(list_source(ctx.obj["config"], backfill), start=1):
             if output:
                 serialize(file, output)
             if not silent:
                 click.echo(file)
+        logger.info(f"Listed {idx} files in total.", dict(count=idx))
     except ValueError as e:
         logger.error(e, exc_info=True)
         raise click.BadParameter("Environment not configured properly")
