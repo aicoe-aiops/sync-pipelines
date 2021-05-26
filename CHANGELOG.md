@@ -128,3 +128,7 @@
 ## Release 3.5.1 (2021-05-20T13:06:47)
 ### Features
 * fix: List all deps in setup.py (#102)
+
+## Release 3.5.2 (2021-05-26T16:00:50)
+### Features
+* fix(logging): Add logging for backfill listing (#105)
