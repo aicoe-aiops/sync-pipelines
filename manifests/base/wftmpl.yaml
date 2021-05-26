@@ -7,6 +7,8 @@ spec:
     parameters:
       - name: is-backfill
         value: "false"
+      - name: split
+        value: "5000"
   entrypoint: entrypoint
   onExit: exit-handler
   templates:
@@ -14,8 +16,17 @@ spec:
       steps:
         - - name: lookup
             template: lookup
-        - - name: sync
+        - - name: split
+            template: split
+        - - name: auxilary-list-files
+            template: auxilary-list-files
+          - name: sync
             template: sync
+            arguments:
+              parameters:
+                - name: filelist
+                  value: "/mnt/vol/partials/{{item}}"
+            withParam: "{{steps.split.outputs.result}}"
 
     - name: exit-handler
       steps:
@@ -50,10 +61,14 @@ spec:
             secretName: "{{workflow.parameters.config}}"
 
     - name: sync
+      inputs:
+        parameters:
+          - name: filelist
+            value: /mnt/vol/filelist.json
       container:
         image: solgate:latest
         command: ["solgate", "send"]
-        args: ["-l", "/mnt/vol/filelist.json"]
+        args: ["-l", "{{inputs.parameters.filelist}}"]
         resources:
           limits:
             cpu: 500m
@@ -70,6 +85,28 @@ spec:
         - name: config
           secret:
             secretName: "{{workflow.parameters.config}}"
+
+    - name: auxilary-list-files
+      script:
+        image: solgate:latest
+        command: [bash]
+        volumeMounts:
+          - name: workdir
+            mountPath: /mnt/vol
+        source: |
+          find /mnt/vol -type f -exec wc -l "{}" \;
+
+    - name: split
+      script:
+        image: solgate:latest
+        command: [bash]
+        volumeMounts:
+          - name: workdir
+            mountPath: /mnt/vol
+        source: |
+          mkdir /mnt/vol/partials
+          split -l {{workflow.parameters.split}} /mnt/vol/filelist.json /mnt/vol/partials/filelist_ -d --additional-suffix=.json
+          python -c 'import os, json; print(json.dumps(os.listdir("/mnt/vol/partials")))'
 
     - name: failure-handler
       steps:
@@ -129,7 +166,7 @@ spec:
     - metadata:
         name: workdir
       spec:
-        accessModes: ["ReadWriteOnce"]
+        accessModes: ["ReadWriteMany"]
         resources:
           requests:
             storage: 1Gi

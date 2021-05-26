@@ -7,7 +7,9 @@ spec:
     parameters:
       - name: config
         value:
-      - name: additional-lookup-params
-        value: --backfill
+      - name: split
+        value: "5000"
+      - name: is-backfill
+        value: "true"
   workflowTemplateRef:
     name: solgate
