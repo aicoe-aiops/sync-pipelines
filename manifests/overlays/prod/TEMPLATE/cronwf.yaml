@@ -1,0 +1,15 @@
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata:
+  generateName: solgate-NAME
+  name: solgate-NAME
+spec:
+  schedule:
+  concurrencyPolicy: "Replace"
+  workflowSpec:
+    arguments:
+      parameters:
+        - name: config
+          value: solgate-NAME
+    workflowTemplateRef:
+      name: solgate

@@ -271,8 +271,8 @@ Import GPG keys `EFDB9AFBD18936D9AB6B2EECBD2C73FF891FBC7E`, `A76372D361282028A99
 gpg --keyserver keyserver.ubuntu.com --recv EFDB9AFBD18936D9AB6B2EECBD2C73FF891FBC7E A76372D361282028A99F9A47590B857E0288997C 04DAFCD9470A962A2F272984E5EB0DA32F3372AC
 ```
 
-1. Create new folder named after the instance in the selected environment overlay.
-2. Create a `kustomization.yaml` file in this new folder with following content:
+1. Create new folder named after the instance in the selected environment overlay (make a copy of `prod/TEMPLATE`).
+2. Create a `kustomization.yaml` file in this new folder with following content, change the `NAME` to your instance name:
 
    ```yaml
    apiVersion: kustomize.config.k8s.io/v1beta1
@@ -280,6 +280,12 @@ gpg --keyserver keyserver.ubuntu.com --recv EFDB9AFBD18936D9AB6B2EECBD2C73FF891F
 
    generators:
      - ./secret-generator.yaml
+
+   commonLabels:
+     app.kubernetes.io/name: NAME
+
+   resources:
+     - ./cronwf.yaml
    ```
 
 3. Create a `secret-generator.yaml` file in this new folder with following content:
@@ -290,16 +296,16 @@ gpg --keyserver keyserver.ubuntu.com --recv EFDB9AFBD18936D9AB6B2EECBD2C73FF891F
    metadata:
      name: secret-generator
    files:
-     - INSTANCE_NAME.enc.yaml
+     - secret.enc.yaml
    ```
 
-4. Create a `INSTANCE_NAME.enc.yaml` file in this folder and encrypt it via sops:
+4. Create a `secret.enc.yaml` file in this folder and encrypt it via sops:
 
    ```yaml
    apiVersion: v1
    kind: Secret
    metadata:
-     name: dev-instance
+     name: solgate-NAME
    stringData:
      source.creds.yaml: |
        aws_access_key_id: KEY_ID_FOR_SOURCE
@@ -345,18 +351,53 @@ gpg --keyserver keyserver.ubuntu.com --recv EFDB9AFBD18936D9AB6B2EECBD2C73FF891F
 
    Please make sure the `*.creds.yaml` entries in the secret are encrypted.
 
-5. Create all event source patch files for this instance (`webhook-es.yaml`, `calendar-es.yaml`, etc.).
+5. Create `cronwf.yaml` with following content, please change the name and config variable value to match the secret above:
+
+   ```yaml
+   apiVersion: argoproj.io/v1alpha1
+   kind: CronWorkflow
+   metadata:
+     generateName: solgate-NAME
+     name: solgate-NAME
+   spec:
+     schedule:
+     concurrencyPolicy: "Replace"
+     workflowSpec:
+       arguments:
+         parameters:
+           - name: config
+             value: solgate-NAME
+       workflowTemplateRef:
+         name: solgate
+   ```
+
 6. Update the resource and patch listing in the `overlays/ENV_NAME/kustomization.yaml`:
 
    ```yaml
    resources:
      - ...
      - ./NEW_INSTANCE_NAME
-
-   patchesStrategicMerge:
-     - ...
-     - ./NEW_INSTANCE_NAME/EVENT_SOURCE_TYPE-es.yaml # For each event source trigger used
    ```
+
+### Backfill
+
+A backfill job ensures processing of all objects in the source bucket. This job assumes none of the objects were processed before and syncs it all potentially overwriting any changes in the destination bucket.
+
+There's a [`backfill.yaml`](manifests/backfill.yaml) available to be submitted directly. Please specify the config parameter before submitting. Value must match a name of a `Secret` config resource for targeted pipeline.
+
+```sh
+argo submit -p config=solgate-NAME manifests/backfill.yaml
+```
+
+### Workflow parameters
+
+`CronWorkflow` resource defined for each pipeline instance allows you to define 3 parameters:
+
+| Parameter    | Value                      | Required | Description                                                                                                                                               |
+| ------------ | -------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `config`     | string                     | yes      | Define which config secret to mount to pods and pass to the solgate runtime                                                                               |
+| `is-backfil` | string (boolean in quotes) | no       | If set to `true` sync all data in the source bucket. Defaults to `false`                                                                                  |
+| `split`      | string (int in quotes)     | no       | Define amount of files that is handled by a single sync pod. If there's more files to sync, the pipeline will spin up additional pods. Defaults to `5000` |
 
 ## Developer setup
 
