@@ -1,0 +1,15 @@
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata:
+  generateName: solgate-cost-management
+  name: solgate-cost-management
+spec:
+  schedule: "30 */12 * * *"
+  concurrencyPolicy: "Replace"
+  workflowSpec:
+    arguments:
+      parameters:
+        - name: config
+          value: solgate-cost-management
+    workflowTemplateRef:
+      name: solgate

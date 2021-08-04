@@ -16,3 +16,4 @@ resources:
   - ./usir
   - ./usir-stage
   - ./rhods-usage-metrics
+  - ./cost-management
