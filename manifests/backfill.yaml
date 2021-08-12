@@ -5,11 +5,9 @@ metadata:
 spec:
   arguments:
     parameters:
-      - name: config
-        value:
-      - name: split
-        value: "5000"
       - name: is-backfill
         value: "true"
+      - name: config
+        value:
   workflowTemplateRef:
     name: solgate

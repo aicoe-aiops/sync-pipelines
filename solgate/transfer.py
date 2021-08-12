@@ -97,7 +97,9 @@ class TransferFailed(Exception):
 
 
 @backoff.on_exception(backoff.expo, TransferFailed, max_tries=10, logger=logger)
-def _transfer_single_file(source_path: str, clients: List[S3FileSystem], dry_run: bool = False) -> None:
+def _transfer_single_file(
+    source_path: str, clients: List[S3FileSystem], idx: int, count: int, dry_run: bool = False
+) -> None:
     """Transfer single object between S3s.
 
     Args:
@@ -117,6 +119,8 @@ def _transfer_single_file(source_path: str, clients: List[S3FileSystem], dry_run
         logger.info(
             "Transfering file",
             dict(
+                idx=idx,
+                count=count,
                 source=dict(name=files[0].client, key=source_path),
                 destinations=[dict(name=f.client, key=f.key) for f in files[1:]],
             ),
@@ -125,15 +129,15 @@ def _transfer_single_file(source_path: str, clients: List[S3FileSystem], dry_run
             copy(files)
 
     except:  # noqa: E722
-        logger.error("Failed to transfer a file", exc_info=True)
+        logger.error("Failed to transfer a file", dict(idx=idx, count=count), exc_info=True)
         raise TransferFailed("Failed to transfer a file")
 
-    logger.info("Verifying file", dict(files=files))
+    logger.info("Verifying file", dict(files=files, idx=idx, count=count))
     if not verify(files, dry_run):
-        logger.warning("Verification failed", dict(files=files))
+        logger.warning("Verification failed", dict(files=files, idx=idx, count=count))
         raise TransferFailed("Verification failed")
 
-    logger.info("Verified", dict(files=files))
+    logger.info("Verified", dict(files=files, idx=idx, count=count))
 
 
 def send(files_to_transfer: List[Dict[str, Any]], config: Dict[str, Any], dry_run: bool = False) -> bool:
@@ -162,9 +166,10 @@ def send(files_to_transfer: List[Dict[str, Any]], config: Dict[str, Any], dry_ru
         raise FileNotFoundError("No files to transfer")
 
     failed = []
-    for source_file in files_to_transfer:
+    count = len(files_to_transfer)
+    for idx, source_file in enumerate(files_to_transfer):
         try:
-            _transfer_single_file(source_file["key"], clients, dry_run)
+            _transfer_single_file(source_file["key"], clients, dry_run, idx, count)
         except TransferFailed:
             logger.error("Max retries reached", dict(file=source_file), exc_info=True)
             failed.append(source_file)
