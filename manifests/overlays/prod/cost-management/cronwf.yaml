@@ -11,5 +11,7 @@ spec:
       parameters:
         - name: config
           value: solgate-cost-management
+        - name: split
+          value: "150"
     workflowTemplateRef:
       name: solgate
