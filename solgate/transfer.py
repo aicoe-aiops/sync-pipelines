@@ -81,7 +81,7 @@ def verify(files: Iterable[S3File], dry_run: bool = False) -> bool:
 
     """
     if dry_run:
-        logger.info("Skipping verification doe to a dry run.")
+        logger.info("Skipping verification due to a dry run.")
         return True
 
     file_a, file_b = tee(files)
@@ -140,7 +140,7 @@ def _transfer_single_file(
     logger.info("Verified", dict(files=files, idx=idx, count=count))
 
 
-def send(files_to_transfer: List[Dict[str, Any]], config: Dict[str, Any], dry_run: bool = False) -> bool:
+def send(files_to_transfer: List[Dict[str, Any]], config: Dict[str, Any], count: int, dry_run: bool = False) -> bool:
     """Transfer recent data between S3s, multiple files.
 
     Args:
@@ -166,10 +166,10 @@ def send(files_to_transfer: List[Dict[str, Any]], config: Dict[str, Any], dry_ru
         raise FileNotFoundError("No files to transfer")
 
     failed = []
-    count = len(files_to_transfer)
+    count = count or len(files_to_transfer)
     for idx, source_file in enumerate(files_to_transfer):
         try:
-            _transfer_single_file(source_file["key"], clients, dry_run, idx, count)
+            _transfer_single_file(source_file["key"], clients, idx, count, dry_run)
         except TransferFailed:
             logger.error("Max retries reached", dict(file=source_file), exc_info=True)
             failed.append(source_file)

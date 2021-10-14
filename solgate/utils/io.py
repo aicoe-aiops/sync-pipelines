@@ -64,9 +64,13 @@ def deserialize(filename: str) -> Any:
         Any: Pythonic object
 
     """
-    with open(filename, "r") as f:
-        for line in f:
-            yield json.loads(line)
+    # noqa: D202
+    def gen():
+        with open(filename, "r") as f:
+            for line in f:
+                yield json.loads(line)
+
+    return gen(), len(open(filename).readlines())
 
 
 def _read_yaml_file(filename: Union[str, Path]) -> Dict[str, Any]:
