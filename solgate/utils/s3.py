@@ -13,6 +13,7 @@ from .logging import logger
 
 DEFAULT_ENDPOINTS = dict(source="https://s3.amazonaws.com/", destination="https://s3.upshift.redhat.com/")
 
+s3fs.S3FileSystem.read_timeout = 18000
 
 S3ConfigSelector = {"source": ("source",), "destination": ("destination",), "all": ("source", "destination")}
 
