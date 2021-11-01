@@ -58,14 +58,14 @@ def _send(ctx, key: str = None, listing_file: str = None, dry_run: bool = False)
     KEY points to a S3 Object within the source base path, that is meant to be transferred.
     """
     if listing_file:
-        files_to_transfer = deserialize(listing_file)
+        files_to_transfer, count = deserialize(listing_file)
     elif key:
-        files_to_transfer = [dict(key=key)]
+        files_to_transfer, count = [dict(key=key)], 1
     else:
-        files_to_transfer = []
+        files_to_transfer, count = [], 0
 
     try:
-        send(files_to_transfer, ctx.obj["config"], dry_run)
+        send(files_to_transfer, ctx.obj["config"], count, dry_run)
     except FileNotFoundError as e:
         logger.error(e, exc_info=True)
         raise NoFilesToSyncError(*e.args)
