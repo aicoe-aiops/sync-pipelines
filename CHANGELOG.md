@@ -1,5 +1,22 @@
 # Changelog for Sync Pipelines GitHub Project
 
+## Release 3.5.3 (2021-11-01T14:47:31)
+* feat: Set generous read timeout
+* fix: Total transfered objects count
+* :arrow_up: Automatic update of dependencies by Kebechet for the ubi8 environment
+* feat: Set Koku pipeline to split on 150 files
+* :arrow_up: Automatic update of dependencies by Kebechet for the ubi8 environment
+* :arrow_up: Automatic update of dependencies by Kebechet
+* feat: Add template folder and documentation
+* Add the secret config for cost management sync pipeline
+* :arrow_up: Automatic update of dependencies by Kebechet for the ubi8 environment
+* Add sync pipeline for cost-management data
+* Add sync pipeline for rhods-metrics
+* :arrow_up: Automatic update of dependencies by Kebechet
+* :arrow_up: Automatic update of dependencies by Kebechet
+* feat(manifets): Split file list to partials to parallelize sync
+* :arrow_up: Automatic update of dependencies by Kebechet
+
 ## [2.0.0] - 2020-Jul-06 - tumido
 
 ### Added
