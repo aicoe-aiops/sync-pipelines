@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: solgate-floorist
+stringData:
+    source.creds.yaml: |
+      aws_access_key_id: KEY_ID_FOR_SOURCE
+      aws_secret_access_key: SECRET_FOR_SOURCE
+    destination.creds.yaml: |
+      aws_access_key_id: DEFAULT_KEY_ID_FOR_DESTINATIONS
+      aws_secret_access_key: DEFAULT_SECRET_FOR_DESTINATIONS
+    config.yaml: |
+      alerts_smtp_server: smtp.corp.redhat.com
+      alerts_from: solgate-alerts@redhat.com
+      alerts_to: insights-compliance@redhat.com
+      timedelta: 12h
+      source:
+        endpoint_url: https://s3.amazonaws.com
+        base_path: insights-metrics-export-prod
+      destinations:
+        - endpoint_url: https://s3.upshift.redhat.com
+          base_path: DH-PROD-RH-INSIGHTS-DATA-EXPORT
