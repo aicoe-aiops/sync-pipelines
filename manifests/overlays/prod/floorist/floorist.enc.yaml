@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: solgate-floorist
+stringData:
+    source.creds.yaml: ENC[AES256_GCM,data:Ulcgn7LZmCO698WxRxrKKgJPThXapTVpX9l2RZIKwRH2O4upgULlQiSrwJmu8v7HmH5SJv5uXyuxS1MB0xoVlYDyKp3+/PAqDL2QKJTF1LsnW/rRSD8+u4IJWklTABccUiF7Kj/hgdI=,iv:e/31Yhg99+7ATbuwbB/VRbzc9vGOAqc4zvkksGtEnpg=,tag:Ew1BmWBfqYYDEXOJqXTKMQ==,type:str]
+    destination.creds.yaml: ENC[AES256_GCM,data:0uxCGm09B47RSdLEn0c0cJvxbuaWVf42CJIv0XFdlskjXrxm57MwZYtlV9BnsLCDWx9LQtchixlnc3/eiIr5lNqXxt/YDinATVItPrldz7lumcMjVjDn+WXvuuFCToVi26+0nUzcYdg=,iv:zNGtdk0HHg02h96LgLGkmaeRH+j52PWIooZKb1a0a20=,tag:58MBoj3hesqaI6cNs0XM+g==,type:str]
+    config.yaml: |-
+        alerts_smtp_server: smtp.corp.redhat.com
+        alerts_from: solgate-alerts@redhat.com
+        alerts_to: insights-compliance@redhat.com
+        timedelta: 12h
+        source:
+          endpoint_url: https://s3.amazonaws.com
+          base_path: insights-metrics-export-prod
+        destinations:
+          - endpoint_url: https://s3.upshift.redhat.com
+            base_path: DH-PROD-RH-INSIGHTS-DATA-EXPORT
+sops:
+    kms: []
+    gcp_kms: []
+    azure_kv: []
+    hc_vault: []
+    age: []
+    lastmodified: "2021-11-08T12:32:50Z"
+    mac: ENC[AES256_GCM,data:Lwe5Qias41usk4VCQB4yze4fLNLFhCgeIjQUdUSNKKxyunZUWbJSOJDOas4g2VCW4Jip9HANOI6WqRxDVQ/DVLLy7b6+cGcTVpE2E0MsAAoAk5Yub7os1AvYqsTuBDJlsZCoPWvMdylEaWIqF4g2Kf/ZNjgcUTgh5682DfKd/fI=,iv:PRo5VtsZqOXASDFWW+Yl0XrhJN/Id5XZaJpbcMIahvk=,tag:VihwsDPaTTAmIjlxzt1E2g==,type:str]
+    pgp:
+        - created_at: "2021-11-08T12:32:49Z"
+          enc: |
+            -----BEGIN PGP MESSAGE-----
+
+            hQEMA/irrHa183bxAQgAoV0crhjKJ8Xn6R6+gJ49oa7hdSUdJt4A7fx0yJ4p7VEm
+            MapctUpeiTETcHcPRwO+XNZiC8YYTYmjOR3lYn3u9R8JGgSIboI+km+JVAMCflRS
+            T6adShQDKKTK5PcZVT+dsrSO/rUUU/ASmIscneNMBETxDPYwNTEFXvA5egszAlrx
+            k4ndgb5w7b0vihNphHfsOvJcXr2/ADdq1pquk+8kani1BF4y0oOrWidp2IyypgVm
+            Qj9NLGXo529/tgQwxDQ8ewmSSSgJ75FkncqoLTFrq1ur/Maqxhw3kn9HSW1AQ8nJ
+            ELyNs0ItuksXsWk3HB5RJQhp7qN8mJZNfPqEfbgxh9JeAekK8y/8FvRkBZ9LArdM
+            NdL1zxlnve9rd+WFTaRANdG6XJ1N5joNvs8gl8z2vwKNbEs2rKfjHvUGCv+6MTlu
+            3jyOmd8oK4E1FrqoUvBf0Nz6Dh4CJkqEC6dl/A6lrA==
+            =kuGS
+            -----END PGP MESSAGE-----
+          fp: EFDB9AFBD18936D9AB6B2EECBD2C73FF891FBC7E
+    encrypted_regex: ^(.*.creds.yaml.*)$
+    version: 3.7.1
