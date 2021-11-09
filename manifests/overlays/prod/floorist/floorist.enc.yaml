@@ -9,7 +9,7 @@ stringData:
         alerts_smtp_server: smtp.corp.redhat.com
         alerts_from: solgate-alerts@redhat.com
         alerts_to: insights-compliance@redhat.com
-        timedelta: 12h
+        timedelta: 24h
         source:
           endpoint_url: https://s3.amazonaws.com
           base_path: insights-metrics-export-prod
