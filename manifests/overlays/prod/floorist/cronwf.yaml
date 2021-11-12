@@ -4,7 +4,7 @@ metadata:
   generateName: solgate-floorist
   name: solgate-floorist
 spec:
-  schedule: "0 */12 * * *"
+  schedule: "0 12 * * *" # FIXME: use "0 */12 * * *" after more services use floorist
   concurrencyPolicy: "Replace"
   workflowSpec:
     arguments:
