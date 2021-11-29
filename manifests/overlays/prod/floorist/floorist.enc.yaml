@@ -21,12 +21,11 @@ sops:
     gcp_kms: []
     azure_kv: []
     hc_vault: []
-    age: []
-    lastmodified: "2021-11-08T12:32:50Z"
-    mac: ENC[AES256_GCM,data:Lwe5Qias41usk4VCQB4yze4fLNLFhCgeIjQUdUSNKKxyunZUWbJSOJDOas4g2VCW4Jip9HANOI6WqRxDVQ/DVLLy7b6+cGcTVpE2E0MsAAoAk5Yub7os1AvYqsTuBDJlsZCoPWvMdylEaWIqF4g2Kf/ZNjgcUTgh5682DfKd/fI=,iv:PRo5VtsZqOXASDFWW+Yl0XrhJN/Id5XZaJpbcMIahvk=,tag:VihwsDPaTTAmIjlxzt1E2g==,type:str]
+    lastmodified: '2021-11-29T16:03:11Z'
+    mac: ENC[AES256_GCM,data:Aq/Gr/C0Ygt9O14Gx+dZCMvK8KevfJ2gOSkvEw09cLyL95urfBg1MHcdJcoLZWXHClquYoJS0cMCWHuLTv/rFH4nCJFyNG1IW3Q+nSPYKNRgczTFtRDv5a2z93UzX6qL/NrMqSuPp3oRXLmWOvBFOLlY9XjBaMFFvZYjp5HXwT4=,iv:T7D/Wrw3XwGvi/I4RjBKmFmzm4bgicwm2D24KJnk8Vg=,tag:bpzQ03gon2vaCBqvx3V7bQ==,type:str]
     pgp:
-        - created_at: "2021-11-08T12:32:49Z"
-          enc: |
+    -   created_at: '2021-11-08T12:32:49Z'
+        enc: |
             -----BEGIN PGP MESSAGE-----
 
             hQEMA/irrHa183bxAQgAoV0crhjKJ8Xn6R6+gJ49oa7hdSUdJt4A7fx0yJ4p7VEm
@@ -39,6 +38,6 @@ sops:
             3jyOmd8oK4E1FrqoUvBf0Nz6Dh4CJkqEC6dl/A6lrA==
             =kuGS
             -----END PGP MESSAGE-----
-          fp: EFDB9AFBD18936D9AB6B2EECBD2C73FF891FBC7E
+        fp: EFDB9AFBD18936D9AB6B2EECBD2C73FF891FBC7E
     encrypted_regex: ^(.*.creds.yaml.*)$
     version: 3.7.1
