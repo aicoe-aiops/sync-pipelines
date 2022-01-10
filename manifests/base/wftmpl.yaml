@@ -35,6 +35,9 @@ spec:
             when: "{{workflow.status}} != Succeeded"
 
     - name: lookup
+      retryStrategy:
+        limit: "3"
+        retryPolicy: "Always"
       container:
         image: solgate:latest
         command: ["solgate", "list"]
@@ -65,6 +68,9 @@ spec:
         parameters:
           - name: filelist
             value: /mnt/vol/filelist.json
+      retryStrategy:
+        limit: "3"
+        retryPolicy: "Always"
       container:
         image: solgate:latest
         command: ["solgate", "send"]
