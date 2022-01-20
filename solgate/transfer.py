@@ -27,7 +27,7 @@ def copy(files: List[S3File]) -> None:
         log_args = dict(source=dict(client=a.client, key=a.key), destination=dict(client=b.client, key=b.key))
         if a.client == b.client:
             logger.info("Copying within the same clients", log_args)
-            a.client.copy(a.key, b.key)
+            a.client.copy(a.client.bucket, a.key, b.client.bucket, b.key)
             continue
 
         logger.info("Copying to a different client", log_args)

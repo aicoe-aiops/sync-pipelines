@@ -134,7 +134,7 @@ def test__transfer_single_file_dry_run(mocked_s3, mocker):
 @pytest.mark.parametrize("mocked_s3", ["same_client.yaml", "same_flags.yaml"], indirect=["mocked_s3"])
 def test__transfer_single_file_same_client(mocked_s3):
     """Should transfer faster between the same clients."""
-    mocked_s3[0].s3fs.touch("BUCKET/a/b.csv")
+    mocked_s3[0].s3c.put_object(Bucket='BUCKET', Key='a/b.csv', Body='foo')
     files = ["a/b.csv", "a-copy/b.csv"]
 
     assert transfer._transfer_single_file("a/b.csv", mocked_s3, 1, 1) is None
@@ -167,14 +167,14 @@ def test__transfer_single_file_fails(mocked_s3, disable_backoff):
 @pytest.mark.parametrize("mocked_s3", ["same_client.yaml"], indirect=["mocked_s3"])
 def test_copy_same_client(mocked_s3, mocker):
     """Should use client.copy when the clients are the same."""
-    mocked_s3[0].s3fs.touch("BUCKET/a/b.csv")
+    mocked_s3[0].s3c.put_object(Bucket='BUCKET', Key='a/b.csv', Body='foo')
     spies_copy = [mocker.spy(client, "copy") for client in mocked_s3]
     spies_open = [mocker.spy(client, "open") for client in mocked_s3]
 
     transfer.copy([S3File(client, "a/b.csv") for client in mocked_s3])
 
     [spy.assert_not_called() for spy in spies_open]
-    spies_copy[0].assert_called_once_with("a/b.csv", "a/b.csv")
+    spies_copy[0].assert_called_once_with("BUCKET", "a/b.csv", "BUCKET", "a/b.csv")
     spies_copy[1].assert_not_called()
 
 
