@@ -69,17 +69,17 @@ def test_list_negative(run, mocker, side_effect, errno):
 @pytest.mark.parametrize(
     "cli_args,func_args",
     [
-        (["send", "key"], [[dict(key="key")], context(), None]),
-        (["send", "-l", "."], [[dict(key="file/key")], context(), None]),
-        (["-c", ".", "send", "key"], [[dict(key="key")], context(path=Path(".")), None]),
-        (["send", "key", "--dry-run"], [[dict(key="key")], context(), True]),
-        (["send", "key", "-n"], [[dict(key="key")], context(), True]),
+        (["send", "key"], [[dict(key="key")], context(), 1, False]),
+        (["send", "-l", "."], [[dict(key="file/key")], context(), 1, False]),
+        (["-c", ".", "send", "key"], [[dict(key="key")], context(path=Path(".")), 1, False]),
+        (["send", "key", "--dry-run"], [[dict(key="key")], context(), 1, True]),
+        (["send", "key", "-n"], [[dict(key="key")], context(), 1, True]),
     ],
 )
 def test_send(run, mocker, cli_args, func_args):
     """Should call proper functions on sync command."""
     mocked_send = mocker.patch("solgate.cli.send")
-    mocker.patch("solgate.cli.deserialize", return_value=[dict(key="file/key")])
+    mocker.patch("solgate.cli.deserialize", return_value=([dict(key="file/key")], 1))
 
     result = run(cli_args)
 

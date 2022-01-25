@@ -215,7 +215,9 @@ def test_deserialize(mocker):
     """Should deserialize from JSON."""
     mocked_open = mocker.mock_open(read_data='{"a":"b"}')
     mocker.patch("builtins.open", mocked_open)
-    assert list(io.deserialize("file.json")) == [dict(a="b")]
+    files, count = io.deserialize("file.json")
+    assert list(files) == [dict(a="b")]
+    assert count == 1
 
 
 def test_serialize(mocker):
