@@ -24,9 +24,14 @@ def mocked_s3(fixture_dir, request):
         for instance in s3fs_instances:
             instance.s3fs = s3fs.S3FileSystem(key=instance.aws_access_key_id, secret=instance.aws_secret_access_key)
             instance.s3fs.s3.create_bucket(Bucket=instance._S3FileSystem__base_path.split("/")[0])
-            instance.boto3 = boto3.resource(
+            instance.s3_client = boto3.resource(
                 "s3", aws_access_key_id=instance.aws_access_key_id, aws_secret_access_key=instance.aws_secret_access_key
-            ).Bucket(instance._S3FileSystem__base_path.split("/")[0])
+            )
+            instance.s3c = boto3.client(
+                "s3", aws_access_key_id=instance.aws_access_key_id, aws_secret_access_key=instance.aws_secret_access_key
+            )
+            instance.boto3 = instance.s3_client.Bucket(instance._S3FileSystem__base_path.split("/")[0])
+            instance.s3_client.create_bucket(Bucket=instance._S3FileSystem__base_path.split("/")[0])
         yield s3fs_instances
 
 

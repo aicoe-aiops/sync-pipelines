@@ -75,21 +75,21 @@ def test_s3_file_system_str():
 
 
 @pytest.mark.parametrize(
-    "dest_base,result",
+    "dest_key,result",
     [
-        (None, "BUCKET/c/d.csv"),
-        ("BUCKET/different_base", "BUCKET/different_base/c/d.csv"),
-        ("BUCKET/base_with_slash/", "BUCKET/base_with_slash/c/d.csv"),
+        (None, "a/b.csv"),
+        ("", "a/b.csv"),
+        ("c/d.csv", "c/d.csv")
     ],
 )
 @pytest.mark.parametrize("mocked_s3", ["same_client.yaml"], indirect=["mocked_s3"])
-def test_s3_file_system_copy(dest_base, result, mocked_s3):
+def test_s3_file_system_copy(dest_key, result, mocked_s3):
     """Should copy within the same S3fs."""
     fs = mocked_s3[0]
-    fs.s3fs.touch("BUCKET/a/b.csv")
-    fs.copy("a/b.csv", "c/d.csv", dest_base)
+    fs.s3c.put_object(Bucket='BUCKET', Key='a/b.csv', Body='foo')
+    fs.copy("BUCKET", "a/b.csv", "BUCKET", dest_key)
 
-    assert fs.s3fs.find(result)
+    assert fs.s3c.get_object(Bucket='BUCKET', Key=result)
 
 
 @pytest.mark.parametrize(

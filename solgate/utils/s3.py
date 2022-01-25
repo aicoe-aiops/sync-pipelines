@@ -67,12 +67,13 @@ class S3FileSystem:
             secret=self.aws_secret_access_key,
             client_kwargs=dict(endpoint_url=self.endpoint_url),
         )
-        self.boto3 = boto3.resource(
+        self.s3_client = boto3.resource(
             "s3",
             aws_access_key_id=self.aws_access_key_id,
             aws_secret_access_key=self.aws_secret_access_key,
             endpoint_url=self.endpoint_url,
-        ).Bucket(self.__base_path.split("/")[0])
+        )
+        self.boto3 = self.s3_client.Bucket(self.__base_path.split("/")[0])
 
     @classmethod
     def from_config_file(
@@ -166,19 +167,24 @@ class S3FileSystem:
         """
         return self.s3fs.rm(f"{self.__base_path}/{path}")
 
-    def copy(self, source: str, dest: str, dest_base_path: str = None) -> None:
+    def copy(self, source_bucket: str, source_key: str, dest_bucket: str, dest_key: str) -> None:
         """Copy files within a bucket.
 
         Args:
-            source (str): Source path
-            dest (str): Destination path
-            dest_base_path (str, optional): Bucket name and base path to the destinatation within
-                the same client
+            source_bucket (str): Source bucket
+            source_key (str): Source key within bucket
+            dest_bucket (str): Destination bucket
+            dest_key (str): Destination key within destination bucket
 
         """
-        dest_base_path = dest_base_path or self.__base_path
 
-        return self.s3fs.copy(f"{self.__base_path}/{source}", f"{dest_base_path.rstrip('/')}/{dest}")
+        if dest_key is None or dest_key == '':
+            dest_key = source_key
+        copy_source = {
+            'Bucket': source_bucket,
+            'Key': '/'.join([self.path, source_key]).lstrip('/')
+        }
+        return self.s3_client.meta.client.copy(copy_source, dest_bucket, '/'.join([self.path, dest_key]).lstrip('/'))
 
     def __eq__(self, other: object) -> bool:
         """Compare S3FileSystem to other objects."""
