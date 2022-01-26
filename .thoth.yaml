@@ -20,6 +20,7 @@ managers:
       maintainers:
         - tumido
         - durandom
+        - accorvin
       assignees:
         - sesheta
       labels: [bot]
