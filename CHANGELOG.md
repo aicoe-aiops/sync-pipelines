@@ -1,5 +1,19 @@
 # Changelog for Sync Pipelines GitHub Project
 
+## Release 3.5.4 (2022-01-26T13:13:18)
+* Add accorvin as a maintainer
+* Update copy function to use boto3
+* feat: Update USIR creds
+* fix(test): Update test suite for #119
+* fix: Retry on failures
+* chore: Report Tower analytics to datahub not to tumido
+* Fix sops metadata for floorist file
+* Reschedule floorist to run only once a day for now
+* Adjust floorist timedelta to 24 hours for failsafe
+* Add encrypted version
+* Add accorvin to OWNERS file
+* Add floorist sync pipeline
+
 ## Release 3.5.3 (2021-11-01T14:47:31)
 * feat: Set generous read timeout
 * fix: Total transfered objects count
