@@ -16,5 +16,6 @@ resources:
   - ./usir
   - ./usir-stage
   - ./rhods-usage-metrics
+  - ./rhods-usage-metrics-dev
   - ./cost-management
   - ./floorist
