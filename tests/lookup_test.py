@@ -76,6 +76,22 @@ def test_list_source_no_objects(mocked_s3, mocker):
 
 
 @pytest.mark.parametrize("mocked_s3", ["same_client.yaml"], indirect=["mocked_s3"])
+def test_list_source_ignored_no_objects(mocked_s3, mocker):
+    """Should raise when no files found."""
+    fs = mocked_s3[0]
+    mocker.patch("solgate.lookup.read_general_config", return_value=dict(ignore_alerts=["no_files"]))
+    mocker.patch("solgate.lookup.S3FileSystem.from_config_file", return_value=[fs])
+
+    fs.s3fs.touch("BUCKET/old.csv")
+    s3_backend.buckets["BUCKET"].keys["old.csv"].last_modified = datetime(2020, 1, 1)
+
+    try:
+        list(lookup.list_source({}))
+    except:
+        pytest.fail("Unexpected FileNotFoundError raised despite ignore flag")
+
+
+@pytest.mark.parametrize("mocked_s3", ["same_client.yaml"], indirect=["mocked_s3"])
 def test_list_source_backfill(mocked_s3, mocker):
     """Should list all files when backfill is enabled."""
     fs = mocked_s3[0]

@@ -230,6 +230,16 @@ def test_serialize(mocker):
     args = "".join(c.args[0] for c in calls)
     assert args == '{"a": "b"}\n'
 
+def test_ititialize_file(mocker):
+    """Should serialize to JSON."""
+    mocked_open = mocker.patch("builtins.open")
+    io.initialize_file("file.json")
+
+    mocked_open.assert_called_once_with("file.json", "w")
+    calls = mocked_open.return_value.__enter__.return_value.write.call_args_list
+    args = "".join(c.args[0] for c in calls)
+    assert args == ''
+
 
 @pytest.mark.parametrize(
     "input,output",
