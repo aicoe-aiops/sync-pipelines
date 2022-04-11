@@ -1,5 +1,10 @@
 # Changelog for Sync Pipelines GitHub Project
 
+## Release 3.5.5 (2022-04-11T12:51:47)
+* 8f5b62c Disable NoFilesToSync alert for RHODS Usage Metrics Dev sync pipeline
+* f6111c0 Add ability to ignore NoFilesToSync error in list command
+* cfad3d7 Add Solgate Pipeline for dev RHODS metrics
+
 ## Release 3.5.4 (2022-01-26T13:13:18)
 * Add accorvin as a maintainer
 * Update copy function to use boto3
