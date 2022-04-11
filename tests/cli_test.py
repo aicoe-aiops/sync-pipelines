@@ -40,11 +40,13 @@ def test_list(run, mocker, cli_args, func_args, file_output):
     """Should call proper functions on list command."""
     mocked_list_source = mocker.patch("solgate.cli.list_source", return_value=["list", "of", "files"])
     mocked_serialize = mocker.patch("solgate.cli.serialize")
+    mocked_initialize_file = mocker.patch("solgate.cli.initialize_file")
 
     result = run(cli_args)
 
     assert result.exit_code == 0
     mocked_list_source.assert_called_once_with(*func_args)
+    mocked_initialize_file.assert_called_once()
 
     if file_output:
         calls = [mocker.call(f, "output.json") for f in ("list", "of", "files")]
@@ -60,6 +62,7 @@ def test_list(run, mocker, cli_args, func_args, file_output):
 def test_list_negative(run, mocker, side_effect, errno):
     """Should fail on list command."""
     mocker.patch("solgate.cli.list_source", side_effect=side_effect)
+    mocker.patch("solgate.cli.initialize_file")
 
     result = run("list")
 

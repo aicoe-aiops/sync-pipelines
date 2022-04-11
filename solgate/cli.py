@@ -6,7 +6,8 @@ from pathlib import Path
 import click
 
 from solgate import list_source, send, send_report, __version__ as version
-from .utils import serialize, logger, deserialize, read_general_config, NoFilesToSyncError, FilesFailedToSyncError
+from .utils import serialize, logger, deserialize, read_general_config, initialize_file
+from .utils import NoFilesToSyncError, FilesFailedToSyncError
 from .report import DEFAULT_RECIPIENT, DEFAULT_SENDER, DEFAULT_SMTP_SERVER
 
 
@@ -103,8 +104,10 @@ def _list(ctx, backfill: bool, silent: bool = False, output: str = None):
     if backfill:
         logger.info("Running in a backfill mode")
     try:
+        idx = 0
+        initialize_file(output)
         for idx, file in enumerate(list_source(ctx.obj["config"], backfill), start=1):
-            if output:
+            if output and file is not None:
                 serialize(file, output)
             if not silent:
                 click.echo(file)

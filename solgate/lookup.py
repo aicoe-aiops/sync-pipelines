@@ -56,6 +56,7 @@ def list_source(config: Dict[str, Any], backfill=False) -> Generator[Dict[str, A
 
     """
     general_config = read_general_config(**config)
+    ignore_alerts = general_config.pop('ignore_alerts', [])
 
     oldest_date = datetime.now(timezone.utc) - parse_timedelta(general_config.get("timedelta", DEFAULT_TIMEDELTA))
     s3 = S3FileSystem.from_config_file(config, S3ConfigSelector["source"])[0]
@@ -75,4 +76,8 @@ def list_source(config: Dict[str, Any], backfill=False) -> Generator[Dict[str, A
         yield {k: getattr(obj, k) for k in KEYS}
 
     if not is_files:
-        raise FileNotFoundError("No files found in given TIMEDELTA")
+        if "no_files" in ignore_alerts:
+            logger.warning("No files found in given TIMEDELTA, returning empty JSON")
+            return None
+        else:
+            raise FileNotFoundError("No files found in given TIMEDELTA")

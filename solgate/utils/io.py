@@ -73,6 +73,17 @@ def deserialize(filename: str) -> Any:
     return gen(), len(open(filename).readlines())
 
 
+def initialize_file(filename: str) -> None:
+    """Writes an empty file
+
+    Args:
+        filename (str): File name or path.
+
+    """
+    with open(filename, "w") as f:
+        pass
+
+
 def _read_yaml_file(filename: Union[str, Path]) -> Dict[str, Any]:
     """Read a file.
 
