@@ -13,5 +13,3 @@ resources:
   - ./mms
   - ./usir
   - ./usir-stage
-  - ./cost-management
-  - ./floorist
