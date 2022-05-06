@@ -11,11 +11,7 @@ commonLabels:
 resources:
   - ../../base
   - ./mms
-  - ./tower-analytics-prod
-  - ./tower-analytics-stage
   - ./usir
   - ./usir-stage
-  - ./rhods-usage-metrics
-  - ./rhods-usage-metrics-dev
   - ./cost-management
   - ./floorist
